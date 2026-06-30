@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>안마의자 대시보드</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI', sans-serif; background: #f0f2f8; color: #1a1a2e; }
+.header { background: linear-gradient(135deg, #5c6bc0 0%, #7e57c2 100%); color: white; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; }
+.header-left h1 { font-size: 17px; font-weight: 700; }
+.header-left .subtitle { font-size: 11px; opacity: 0.75; margin-top: 3px; }
+.reload-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.reload-btn:hover { background: rgba(255,255,255,0.3); }
+.container { padding: 14px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.full { grid-column: 1 / -1; }
+.card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+.card-header { display: flex; align-items: center; gap: 7px; margin-bottom: 11px; }
+.card-title { font-size: 13px; font-weight: 700; color: #374151; flex: 1; }
+.badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+.badge-blue { background: #dbeafe; color: #1d4ed8; }
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-purple { background: #ede9fe; color: #5b21b6; }
+.news-item { padding: 9px 0; border-bottom: 1px solid #f3f4f6; }
+.news-item:last-child { border-bottom: none; }
+.news-item a { text-decoration: none; color: inherit; display: block; }
+.news-item a:hover .news-title { color: #5c6bc0; }
+.news-title { font-size: 12.5px; font-weight: 600; line-height: 1.45; color: #111827; margin-bottom: 3px; }
+.news-meta { font-size: 10px; color: #9ca3af; }
+.loading { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 12px; padding: 16px 0; }
+.spinner { width: 14px; height: 14px; border: 2px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-box { background: #fef2f2; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #dc2626; }
+.ts { font-size: 10px; color: #d1d5db; margin-top: 8px; text-align: right; }
+.tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 13px; }
+.tab-btn { padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #e5e7eb; background: white; color: #6b7280; transition: all 0.15s; }
+.tab-btn:hover { border-color: #7c3aed; color: #7c3aed; }
+.tab-btn.active { background: #7c3aed; color: white; border-color: #7c3aed; }
+.brand-panel { display: flex; align-items: flex-start; gap: 14px; background: linear-gradient(135deg, #f5f3ff, #ede9fe); border-radius: 10px; padding: 14px; margin-bottom: 14px; border: 1px solid #ddd6fe; }
+.brand-logo { font-size: 36px; line-height: 1; flex-shrink: 0; }
+.brand-info-text { flex: 1; }
+.brand-name { font-size: 15px; font-weight: 800; color: #4c1d95; margin-bottom: 4px; }
+.brand-meta { font-size: 10px; color: #7c3aed; margin-bottom: 6px; font-weight: 600; }
+.brand-desc { font-size: 12px; color: #374151; line-height: 1.6; }
+.brand-link { display: inline-block; margin-top: 7px; font-size: 11px; color: #7c3aed; font-weight: 700; text-decoration: none; }
+.channel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.ch-card { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 13px 10px; text-align: center; cursor: pointer; transition: all 0.18s; background: #fafafa; }
+.ch-card:hover { border-color: #7c3aed; background: #f5f3ff; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(124,58,237,0.12); }
+.ch-emoji { font-size: 26px; margin-bottom: 7px; }
+.ch-name { font-size: 12.5px; font-weight: 700; color: #1f2937; }
+.ch-desc { font-size: 10px; color: #9ca3af; margin-top: 3px; }
+.ch-cta { margin-top: 8px; font-size: 11px; color: #7c3aed; font-weight: 700; }
+.cat-hint { font-size: 11.5px; color: #6b7280; margin-bottom: 11px; }
+.section-title { font-size: 14px; font-weight: 800; color: #1f2937; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rank-panel { display: flex; gap: 10px; margin-bottom: 14px; }
+.rank-box { flex: 1; border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.rank-box.exp { background: linear-gradient(135deg,#fdf2f8,#fce7f3); border: 1px solid #fbcfe8; }
+.rank-box.chp { background: linear-gradient(135deg,#f0fdf4,#dcfce7); border: 1px solid #bbf7d0; }
+.rank-title { font-size: 10.5px; font-weight: 800; margin-bottom: 7px; }
+.rank-item { display: flex; align-items: center; gap: 7px; padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; }
+.rank-item:last-child { border-bottom: none; }
+.rank-item:hover .rank-name { color: #5c6bc0; }
+.rank-num { font-size: 10px; font-weight: 800; width: 14px; text-align: center; flex-shrink: 0; }
+.rank-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; background: #f3f4f6; flex-shrink: 0; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 11px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-brand { font-size: 9px; color: #9ca3af; }
+.rank-price { font-size: 11px; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
+.spark-cell { width: 72px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.price-brand-tabs { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
+.pb-btn { padding: 5px 11px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #e5e7eb; background: white; color: #6b7280; transition: all 0.15s; }
+.pb-btn:hover { border-color: #5c6bc0; color: #5c6bc0; }
+.pb-btn.active { background: #5c6bc0; color: white; border-color: #5c6bc0; }
+.plist { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; width: fit-content; min-width: 360px; }
+.prow { display: flex; align-items: center; gap: 20px; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; }
+.prow:last-child { border-bottom: none; }
+.prow:hover { background: #fafafe; }
+.prow-name { width:180px; flex-shrink:0; }
+.model-img { width:48px; height:48px; object-fit:contain; border-radius:6px; border:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0; }
+.prow-price { display:flex; flex-direction:column; gap:3px; }
+.model-cell { font-size: 14px; font-weight: 700; color: #1f2937; }
+.model-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.price-ref-link { font-size: 13px; font-weight: 700; color: #111827; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.price-ref-link:hover { color: #5c6bc0; }
+.price-loading { color: #9ca3af; font-size: 10px; animation: pricePulse 1.4s ease-in-out infinite; }
+.price-row { display:flex; align-items:center; gap:5px; }
+.price-src { font-size:9px; font-weight:800; padding:1px 5px; border-radius:3px; flex-shrink:0; letter-spacing:0.3px; }
+.price-src-d { background:#dbeafe; color:#1d4ed8; }
+.price-src-n { background:#dcfce7; color:#15803d; }
+@keyframes pricePulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.price-refresh-btn { padding: 3px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; cursor: pointer; }
+.price-refresh-btn:hover { background: #ede9fe; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: 16px; width: 90%; max-width: 560px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal-header { position: sticky; top: 0; background: white; padding: 16px 18px 12px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 15px; font-weight: 700; color: #111827; }
+.modal-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.modal-close { width: 28px; height: 28px; border-radius: 99px; border: none; background: #f3f4f6; cursor: pointer; font-size: 16px; color: #6b7280; }
+.modal-body { padding: 14px 18px 20px; }
+.model-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+.model-row:last-child { border-bottom: none; }
+.model-name { font-size: 13px; font-weight: 600; color: #1f2937; }
+.model-sub2 { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+.model-btn { padding: 5px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #7c3aed; color: white; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>📊 실시간 워크 대시보드</h1>
+    <div class="subtitle" id="ts-header">데이터를 불러오는 중...</div>
+  </div>
+  <button class="reload-btn" onclick="init()">↻ 새로고침</button>
+</div>
+<div class="container">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span>🛍️</span><span class="card-title">쇼핑 · 유통 뉴스</span><span class="badge badge-green">실시간</span></div>
+      <div id="shopping-news"><div class="loading"><div class="spinner"></div>불러오는 중...</div></div>
+    </div>
+    <div class="card full" style="width:fit-content;min-width:0">
+      <div class="section-title">🏷️ 브랜드별 주요 모델 최저가 비교
+        <button class="price-refresh-btn" onclick="refreshPrices()">↻ 가격 새로고침</button>
+        <button class="price-refresh-btn" style="background:#d1fae5;color:#065f46;border-color:#a7f3d0" onclick="document.getElementById('naver-api-setup').style.display=document.getElementById('naver-api-setup').style.display==='none'?'block':'none'">🟢 네이버 API</button>
+      </div>
+      <div id="naver-api-setup" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:12px">
+        <div style="font-weight:700;color:#065f46;margin-bottom:8px">🟢 네이버 쇼핑 Open API 연동</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="naver-id" type="text" placeholder="Client ID" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;width:180px">
+          <input id="naver-secret" type="text" placeholder="Client Secret" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;width:180px">
+            <button onclick="saveNaverKey()" style="padding:5px 14px;background:#059669;color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">저장 & 새로고침</button>
+          <button onclick="clearNaverKey()" style="padding:5px 10px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">삭제</button>
+        </div>
+      </div>
+      <div id="rank-panel" class="rank-panel"></div>
+      <div class="price-brand-tabs">
+        <button class="pb-btn active" onclick="setPriceBrand(this,'파나소닉')">파나소닉</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'바디프랜드')">바디프랜드</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'세라젬')">세라젬</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'브람스')">브람스</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'제스파')">제스파</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'코지마')">코지마</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'리쏘')">리쏘</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'누하스')">누하스</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'코웨이')">코웨이</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'쿠쿠')">쿠쿠</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'비욘드릴렉스')">비욘드릴렉스</button>
+        <button class="pb-btn" onclick="setPriceBrand(this,'바이브썸')">바이브썸</button>
+      </div>
+      <div id="price-compare-table"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="modal-title" id="modal-title"></div><div class="modal-sub" id="modal-sub"></div></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+<script>
+const BRAND_INFO = {
+  '안마의자':{ logo:'💆', name:'전체 안마의자', meta:'브랜드 무관', desc:'브랜드에 관계없이 전체 안마의자 채널별 최저가를 비교합니다.', url:'' },
+  '파나소닉 안마의자':{ logo:'🇯🇵', name:'Panasonic (파나소닉)', meta:'일본 · 1918년 설립', desc:'세계적인 전자 기업 파나소닉의 프리미엄 안마의자. Real Pro AI 기술과 SJ프레임으로 체형에 맞는 정밀 마사지를 구현.', url:'https://panasonic.com/kr' },
+  '바디프랜드 안마의자':{ logo:'🟣', name:'바디프랜드', meta:'한국 · 2007년 설립', desc:'대한민국 1위 안마의자 브랜드. CES 2026 혁신상 수상. 의료기기 인증 팬텀·파라오 시리즈, AI 헬스케어 로봇 733 등 18개 이상 라인업 운영.', url:'https://www.bodyfriend.co.kr' },
+  '세라젬 안마의자':{ logo:'🟢', name:'세라젬 (CERAGEM)', meta:'한국 · 1998년 설립', desc:'척추 온열 의료기기 전문 브랜드. 마스터 V 시리즈(V4~V11)는 식약처 의료기기 인증. 파우제 M 시리즈는 프리미엄 안마의자 라인.', url:'https://www.ceragem.com' },
+  '브람스 안마의자':{ logo:'🎵', name:'브람스 (BRAMS)', meta:'한국 · 1994년 설립', desc:'대한민국 브랜드만족도 8년 연속 1위(KBSA 2025). 4세대 눕힘 프레임·발목 스윙 마사지 등 자체 핵심 기술 보유.', url:'https://ebrams.co.kr' },
+  '제스파 안마의자':{ logo:'💎', name:'제스파 (ZESPA)', meta:'한국 · 1993년 설립', desc:'30년 이상 마사지 기기 전문 기업. 안마의자·안마기·찜질기 등 1,000여개 모델 보유.', url:'https://www.zespa.co.kr' },
+  '코지마 안마의자':{ logo:'🌿', name:'코지마 (COZYMA)', meta:'한국', desc:'실속형부터 프리미엄까지 폭넓은 라인업. 2025 베스트셀러 오블리크(17가지 안마모드).', url:'https://cozyma.com' },
+  '리쏘 안마의자':{ logo:'✨', name:'리쏘 (LISSO)', meta:'한국', desc:'국내 최초 4D 듀얼무빙 기술 보유(오딘2). 물리치료 연구소 KEMA와 협력한 오스카 PT 출시(2025).', url:'https://www.lisso.co.kr' },
+};
+const BRAND_MODELS = {
+  '안마의자':[{name:'안마의자 추천 2025',sub:'브랜드 무관 인기 모델'},{name:'안마의자 특가',sub:'할인·프로모션'},{name:'4D 안마의자',sub:'4D 메카니즘 전체'},{name:'안마의자 렌탈',sub:'월 렌탈 상품 비교'}],
+  '파나소닉 안마의자':[{name:'파나소닉 EP-MAN1',sub:'최상위 플래그십'},{name:'파나소닉 EP-MAK1',sub:'2번째 라인'},{name:'파나소닉 EP-MAJ7',sub:'3번째 라인'},{name:'파나소닉 EP-MAL1',sub:'4번째 라인'},{name:'파나소닉 EP-MAF1',sub:'5번째 라인'},{name:'파나소닉 EP-MA32',sub:'6번째 라인'},{name:'파나소닉 EP-MAC9',sub:'7번째 라인'},{name:'파나소닉 EP-MA22',sub:'8번째 라인'},{name:'파나소닉 EP-MA05',sub:'9번째 라인'}],
+  '바디프랜드 안마의자':[{name:'바디프랜드 733',sub:'AI 헬스케어 로봇·CES 2026'},{name:'바디프랜드 팔콘SV 2026',sub:'2026 신모델'},{name:'바디프랜드 팬텀로보',sub:'4D 로보 메카니즘'},{name:'바디프랜드 메디컬파라오 2026',sub:'의료기기'},{name:'바디프랜드 퀀텀뷰티캡슐 2026',sub:'뷰티 케어'},{name:'바디프랜드 카릭스로보',sub:'로보 메카니즘'}],
+  '세라젬 안마의자':[{name:'세라젬 마스터V11',sub:'최상위·듀얼 포지션'},{name:'세라젬 마스터V9',sub:'의료기기·식약처 인증'},{name:'세라젬 마스터V7',sub:'온열 척추·전신 케어'},{name:'세라젬 마스터V5',sub:'2025 신모델'},{name:'세라젬 마스터V4',sub:'스탠다드 온열'},{name:'세라젬 파우제M10',sub:'프리미엄·듀얼 엔진'},{name:'세라젬 파우제M8Fit',sub:'커버 12종 교체'},{name:'세라젬 파우제M6',sub:'컴팩트 풀바디'},{name:'세라젬 파우제M4',sub:'미드레인지'}],
+  '브람스 안마의자':[{name:'브람스 올인케어4D',sub:'4세대 눕힘 프레임'},{name:'브람스 올인S',sub:'실속형'},{name:'브람스 더블핏',sub:'듀얼 마사지'},{name:'브람스 프라임S3300',sub:'스탠다드'}],
+  '제스파 안마의자':[{name:'제스파 아티아스',sub:'플래그십'},{name:'제스파 더클랑 듀얼',sub:'듀얼 메카니즘'},{name:'제스파 더클랑',sub:'프리미엄'},{name:'제스파 소노디아엣지',sub:'소노디아 업그레이드'},{name:'제스파 소노디아ZPC2226',sub:'음향 연동'},{name:'제스파 멜티스ZPC2138',sub:'중상위'},{name:'제스파 엘로이ZPC2083',sub:'스탠다드'}],
+  '코지마 안마의자':[{name:'코지마 카이저엑스 CMC-X5D',sub:'최상위·5D'},{name:'코지마 노바엑스 CMC-X4700',sub:'4D 프리미엄'},{name:'코지마 클라쎄시그니처',sub:'프리미엄 디자인'},{name:'코지마 오블리크',sub:'2025 베스트셀러'},{name:'코지마 더블모션',sub:'듀얼 엔진'},{name:'코지마 아르코',sub:'4D 입체'},{name:'코지마 카이저',sub:'22가지 자동코스'}],
+  '리쏘 안마의자':[{name:'리쏘 오스카PT LSF-7100F',sub:'2025 신제품·KEMA'},{name:'리쏘 오딘2',sub:'4D 듀얼무빙 플래그십'},{name:'리쏘 오딘PT',sub:'물리치료 버전'},{name:'리쏘 미라클',sub:'4D+ 마사지볼'},{name:'리쏘 비엔토DL LS-6800D',sub:'에어 안마 특화'},{name:'리쏘 씨엘로S LSE-20s',sub:'가성비'}],
+};
+const PRICE_MODELS = {
+  '파나소닉':[
+    {name:'EP-MAN1',full:'파나소닉 EP-MAN1',sub:'최상위 플래그십',pcode:'31981256',price:'미등록',year:'2023'},
+    {name:'EP-MAK1',full:'파나소닉 EP-MAK1',sub:'2번째 라인',pcode:'9741543',price:'미등록',year:'2019'},
+    {name:'EP-MAJ7',full:'파나소닉 EP-MAJ7',sub:'3번째 라인',pcode:'5743603',price:'미등록',year:'2018'},
+    {name:'EP-MAL1',full:'파나소닉 EP-MAL1',sub:'4번째 라인',pcode:'102556742',price:'미등록',year:'2025'},
+    {name:'EP-MAF1',full:'파나소닉 EP-MAF1',sub:'5번째 라인',pcode:'16464080',price:'미등록',year:'2021'},
+    {name:'EP-MA32',full:'파나소닉 EP-MA32',sub:'6번째 라인',pcode:'12233837',price:'미등록',year:'2020'},
+    {name:'EP-MAC9',full:'파나소닉 EP-MAC9',sub:'7번째 라인',pcode:'17731112',price:'미등록',year:'2022'},
+    {name:'EP-MA22',full:'파나소닉 EP-MA22',sub:'8번째 라인',pcode:'21728783',price:'미등록',year:'2023'},
+    {name:'EP-MA05',full:'파나소닉 EP-MA05',sub:'9번째 라인',pcode:'16228961',price:'미등록',year:'2021'},
+  ],
+  '바디프랜드':[
+    {name:'733',full:'바디프랜드 733 안마의자',sub:'AI 헬스케어 로봇·CES 2026',price:'미등록',year:'2026'},
+    {name:'팔콘 SV 2026',full:'바디프랜드 팔콘SV 2026',sub:'2026 신모델',price:'미등록',year:'2026'},
+    {name:'메디컬 팬텀 2026',full:'바디프랜드 메디컬팬텀 2026',sub:'의료기기',price:'미등록',year:'2026'},
+    {name:'팬텀 로보',full:'바디프랜드 팬텀로보',sub:'4D 로보 메카니즘',pcode:'17439983',price:'미등록',year:'2022'},
+    {name:'메디컬 파라오 2026',full:'바디프랜드 메디컬파라오 2026',sub:'의료기기 파라오',pcode:'68290748',price:'미등록',year:'2025'},
+    {name:'더 렉스',full:'바디프랜드 더렉스 안마의자',sub:'슈퍼카 컨셉',price:'미등록'},
+    {name:'퀀텀 뷰티캡슐 2026',full:'바디프랜드 퀀텀뷰티캡슐 2026',sub:'뷰티 케어 특화',pcode:'93802604',price:'미등록',year:'2025'},
+    {name:'카릭스 로보',full:'바디프랜드 카릭스로보',sub:'로보 메카니즘',pcode:'93809612',price:'미등록',year:'2025'},
+  ],
+  '세라젬':[
+    {name:'마스터 V11',full:'세라젬 마스터V11 안마의자',sub:'최상위·듀얼 포지션',price:'미등록',year:'2024'},
+    {name:'마스터 V9',full:'세라젬 마스터V9',sub:'의료기기·식약처 인증',pcode:'49644845',price:'미등록',year:'2024'},
+    {name:'마스터 V7',full:'세라젬 마스터V7',sub:'온열 척추·전신 케어',pcode:'19604639',price:'미등록',year:'2023'},
+    {name:'마스터 V5',full:'세라젬 마스터V5',sub:'2025 신모델',pcode:'122693265',price:'미등록',year:'2025'},
+    {name:'마스터 V4',full:'세라젬 마스터V4',sub:'스탠다드 온열',pcode:'21637352',price:'미등록',year:'2021'},
+    {name:'파우제 M10',full:'세라젬 파우제M10',sub:'프리미엄·듀얼 엔진',pcode:'91909979',price:'미등록',year:'2025'},
+    {name:'파우제 M8 Fit',full:'세라젬 파우제M8Fit',sub:'커버 12종 교체',pcode:'73945565',price:'미등록',year:'2023'},
+    {name:'파우제 M6',full:'세라젬 파우제M6',sub:'컴팩트 풀바디',pcode:'52470452',price:'미등록',year:'2024'},
+    {name:'파우제 M4',full:'세라젬 파우제M4',sub:'미드레인지',pcode:'19880504',price:'미등록',year:'2021'},
+    {name:'파우제 M2',full:'세라젬 파우제M2',sub:'엔트리',price:'미등록'},
+  ],
+  '브람스':[
+    {name:'올인케어 4D',full:'브람스 올인케어4D',sub:'4세대 눕힘 프레임',pcode:'122703555',price:'미등록',year:'2025'},
+    {name:'올인S',full:'브람스 올인S',sub:'실속형',pcode:'111583416',price:'미등록',year:'2024'},
+    {name:'더블핏',full:'브람스 더블핏',sub:'듀얼 마사지',pcode:'74968073',price:'미등록',year:'2023'},
+    {name:'S7400',full:'브람스 S7400',sub:'프리미엄 라인',price:'미등록'},
+    {name:'테스 S4500',full:'브람스 테스S4500',sub:'중상위 라인',price:'미등록'},
+    {name:'루나 S4300',full:'브람스 루나S4300',sub:'중급 라인',price:'미등록'},
+    {name:'프라임 S3300',full:'브람스 프라임S3300',sub:'스탠다드',pcode:'88223060',price:'미등록',year:'2023'},
+    {name:'토파즈 A3838',full:'브람스 토파즈A3838',sub:'가성비',price:'미등록'},
+  ],
+  '제스파':[
+    {name:'아티아스',full:'제스파 아티아스',sub:'플래그십',pcode:'92187425',price:'미등록',year:'2024'},
+    {name:'더 클랑 듀얼',full:'제스파 더클랑 듀얼',sub:'듀얼 메카니즘',price:'미등록'},
+    {name:'더 클랑',full:'제스파 더클랑',sub:'프리미엄',pcode:'15587951',price:'미등록',year:'2020'},
+    {name:'소노디아 엣지',full:'제스파 소노디아엣지',sub:'소노디아 업그레이드',pcode:'98415869',price:'미등록',year:'2024'},
+    {name:'소노디아 ZPC2226',full:'제스파 소노디아ZPC2226',sub:'음향 연동',pcode:'60063254',price:'미등록',year:'2022'},
+    {name:'멜티스 ZPC2138',full:'제스파 멜티스ZPC2138',sub:'중상위',price:'미등록'},
+    {name:'엘로이 ZPC2083',full:'제스파 엘로이ZPC2083',sub:'스탠다드',price:'미등록'},
+  ],
+  '코지마':[
+    {name:'카이저 엑스',full:'코지마 카이저엑스 CMC-X5D',sub:'최상위·5D',price:'미등록'},
+    {name:'노바 엑스',full:'코지마 노바엑스 CMC-X4700',sub:'4D 프리미엄',price:'미등록'},
+    {name:'클라쎄 시그니처',full:'코지마 클라쎄시그니처',sub:'프리미엄 디자인',pcode:'5406202',price:'미등록',year:'2017'},
+    {name:'오블리크',full:'코지마 오블리크',sub:'2025 베스트셀러',pcode:'90507992',price:'미등록',year:'2024'},
+    {name:'더블모션',full:'코지마 더블모션',sub:'듀얼 엔진',pcode:'20259386',price:'미등록',year:'2022'},
+    {name:'아르코',full:'코지마 아르코',sub:'4D 입체',pcode:'70770629',price:'미등록',year:'2023'},
+    {name:'카이저',full:'코지마 카이저',sub:'22가지 자동코스',pcode:'9784527',price:'미등록',year:'2019'},
+  ],
+  '리쏘':[
+    {name:'오스카 PT',full:'리쏘 오스카PT',sub:'2025 신제품·KEMA',pcode:'88218983',price:'미등록',year:'2025'},
+    {name:'오딘2',full:'리쏘 오딘2',sub:'4D 듀얼무빙 플래그십',pcode:'88222889',price:'미등록',year:'2023'},
+    {name:'오딘 PT',full:'리쏘 오딘PT',sub:'물리치료 버전',pcode:'88218758',price:'미등록',year:'2023'},
+    {name:'미라클',full:'리쏘 미라클',sub:'4D+ 마사지볼',pcode:'88217855',price:'미등록',year:'2024'},
+    {name:'이지움D',full:'리쏘 이지움D LS-6700D',sub:'4D 듀얼무빙',price:'미등록'},
+    {name:'비엔토 DL',full:'리쏘 비엔토DL LS-6800D',sub:'에어 안마 특화',pcode:'88219688',price:'미등록',year:'2024'},
+    {name:'에일린',full:'리쏘 에일린 LS-4100N',sub:'중급형',price:'미등록'},
+    {name:'씨엘로S',full:'리쏘 씨엘로S LSE-20s',sub:'가성비',pcode:'17816156',price:'미등록',year:'2022'},
+  ],
+  '누하스':[
+    {name:'루나 4D',full:'누하스 루나 4D NR-SN100L',sub:'4D 플래그십',pcode:'102760382',price:'미등록',year:'2025'},
+    {name:'오르빗',full:'누하스 오르빗 NM-SN700L',sub:'올인원 대형',pcode:'52152566',price:'미등록',year:'2024'},
+    {name:'오로라 올인원',full:'누하스 오로라 올인원 NM-SN600L',sub:'2026 신모델',pcode:'108430193',price:'미등록',year:'2026'},
+    {name:'누캄포',full:'누하스 누캄포 NM-SN500E',sub:'2026 신모델',pcode:'104604395',price:'미등록',year:'2026'},
+    {name:'브리즈',full:'누하스 브리즈 NM-FN100L',sub:'2026 신모델',pcode:'104754911',price:'미등록',year:'2026'},
+    {name:'루나 L',full:'누하스 루나 L NR-SN100N',sub:'SL트랙 리클라이너',pcode:'21531833',price:'미등록',year:'2023'},
+    {name:'뉴 클래식 패브릭',full:'누하스 뉴 클래식 패브릭 N-0003HF',sub:'패브릭 소재',pcode:'88217924',price:'미등록',year:'2023'},
+    {name:'뉴 클래식',full:'누하스 뉴 클래식 N-0003H',sub:'스탠다드',pcode:'14540756',price:'미등록',year:'2021'},
+  ],
+  '코웨이':[
+    {name:'비렉스 MC-SC01',full:'코웨이 비렉스 MC-SC01',sub:'최상위 대형',pcode:'17293652',price:'미등록',year:'2022'},
+    {name:'비렉스 트리플체어',full:'코웨이 비렉스 트리플체어 MC-R01',sub:'4D 풀바디',pcode:'88237514',price:'미등록',year:'2025'},
+    {name:'비렉스 페블체어 2',full:'코웨이 비렉스 페블체어2 MC-C02AT',sub:'2026 신모델',price:'미등록',year:'2026'},
+    {name:'비렉스 페블체어',full:'코웨이 비렉스 페블체어 MC-C01',sub:'SL프레임 음성인식',pcode:'28241231',price:'미등록',year:'2023'},
+    {name:'비렉스 마인 2.0',full:'코웨이 비렉스 마인 MC-B03',sub:'스마트 컴팩트',pcode:'71717873',price:'미등록',year:'2024'},
+    {name:'비렉스 마인 플러스',full:'코웨이 비렉스 마인 MC-B02',sub:'컴팩트형',pcode:'71717849',price:'미등록',year:'2024'},
+  ],
+  '쿠쿠':[
+    {name:'리네이처 듀얼에어 H410WW',full:'쿠쿠 리네이처 듀얼에어 CMS-H410WW',sub:'듀얼에어·4D 최상위',pcode:'77382755',price:'미등록',year:'2025'},
+    {name:'리네이처 F410CB',full:'쿠쿠 리네이처 CMS-F410CB',sub:'24가지 코스',pcode:'77382758',price:'미등록',year:'2025'},
+    {name:'리네이처 E410CP',full:'쿠쿠 리네이처 CMS-E410CP',sub:'4D 입체 마사지',pcode:'88223891',price:'미등록',year:'2023'},
+    {name:'리네이처 컴팩트 G210NW',full:'쿠쿠 리네이처 컴팩트 CMS-G210NW',sub:'17가지 코스',pcode:'40800311',price:'미등록',year:'2024'},
+    {name:'레스티노 J310BR',full:'쿠쿠 레스티노 CMS-J310BR',sub:'가구형 디자인',pcode:'98415863',price:'미등록',year:'2025'},
+    {name:'리네이처 D10SLGB',full:'쿠쿠 리네이처 CMS-D10SLGB',sub:'6가지 코스 대형',pcode:'88224677',price:'미등록',year:'2022'},
+  ],
+  '비욘드릴렉스':[
+    {name:'오르카',full:'비욘드릴렉스 오르카 안마의자',sub:'최상위 플래그십',price:'미등록',year:'2024'},
+    {name:'에탄',full:'비욘드릴렉스 에탄 안마의자',sub:'풀바디 프리미엄',price:'미등록',year:'2024'},
+    {name:'노바',full:'비욘드릴렉스 쿼드코어 4D 안마의자 노바',sub:'2026 신모델',price:'미등록',year:'2026'},
+    {name:'어반',full:'비욘드릴렉스 어반 안마의자',sub:'컴팩트 디자인',price:'미등록',year:'2025'},
+    {name:'아이릴렉스 B70',full:'비욘드릴렉스 아이릴렉스 B70',sub:'4D 풀바디',price:'미등록',year:'2025'},
+    {name:'키란 엣지',full:'비욘드릴렉스 키란 엣지',sub:'업그레이드 버전',price:'미등록',year:'2025'},
+    {name:'키란',full:'비욘드릴렉스 키란 안마의자',sub:'인기 스탠다드',price:'미등록',year:'2024'},
+    {name:'아일라',full:'비욘드릴렉스 아일라 안마의자',sub:'가구형 디자인',price:'미등록',year:'2023'},
+    {name:'비소파 오라클 B61',full:'비욘드릴렉스 비소파 오라클',sub:'가성비 소파형',price:'미등록',year:'2025'},
+  ],
+  '바이브썸':[
+    {name:'VT-40',full:'바이브썸 VT-40',sub:'SL프레임 발롤러',pcode:'122670432',price:'미등록',year:'2026'},
+    {name:'V8',full:'바이브썸 V8 BT-RT-A51',sub:'4D 메카니즘',pcode:'97571747',price:'미등록',year:'2025'},
+    {name:'VT-30',full:'바이브썸 VT-30',sub:'6가지 안마 모드',pcode:'122670580',price:'미등록',year:'2026'},
+    {name:'VT-50',full:'바이브썸 VT-50',sub:'풀바디 에어백',pcode:'122670617',price:'미등록',year:'2026'},
+    {name:'I3',full:'바이브썸 I3',sub:'SL프레임 컴팩트',pcode:'122670478',price:'미등록',year:'2026'},
+    {name:'B3',full:'바이브썸 B3 BT-HL-6610BR',sub:'무선충전 컴팩트',pcode:'104573075',price:'미등록',year:'2026'},
+  ],
+};
+// 다나와 제품 이미지 URL 하드코딩 (og:image에서 수집)
+const DANAWA_IMGS={
+  '31981256':'https://img.danuri.io/catalog-image/256/981/031/b210676ce1974d17b4302f84ed76076b.jpg',
+  '9741543':'https://img.danuri.io/catalog-image/543/741/009/4e9c2249a46c4a0b90430184be131189.jpg',
+  '5743603':'https://img.danuri.io/catalog-image/603/743/005/a8db7e60757140189762e64ede151fbf.jpg',
+  '102556742':'https://img.danuri.io/catalog-image/742/556/102/445b2db918234bd289a2d5b6db65ed5b.jpg',
+  '16464080':'https://img.danuri.io/catalog-image/080/464/016/bc721bb88f3044128de08f20b666551a.jpg',
+  '12233837':'https://img.danuri.io/catalog-image/837/233/012/9128fb9618e546e3b45a5b36c38a817d.jpg',
+  '17731112':'https://img.danuri.io/catalog-image/112/731/017/49f25bccf7194d4ea779a7b7c4a5d474.jpg',
+  '21728783':'https://img.danuri.io/catalog-image/783/728/021/cdcf086be63744d487bdf887cabd834c.jpg',
+  '16228961':'https://img.danuri.io/catalog-image/961/228/016/2bc3aba9dbd246be8055f0c03c4fdb74.jpg',
+  '17439983':'https://img.danuri.io/catalog-image/983/439/017/f10333d4cbcf45a9b51f44867e24891b.jpg',
+  '68290748':'https://img.danuri.io/catalog-image/748/290/068/9703756ac82148129736d4e8387aa55c.jpg',
+  '93802604':'https://img.danuri.io/catalog-image/604/802/093/7ce36b4d45bc4e129ce80cd5cc385034.jpg',
+  '93809612':'https://img.danuri.io/catalog-image/612/809/093/8b51e56c2e16492487dcfa937af92c41.jpg',
+  '49644845':'https://img.danuri.io/catalog-image/845/644/049/3729d6cb7f4d410196efaac2590ec07b.jpg',
+  '19604639':'https://img.danuri.io/catalog-image/639/604/019/8b50f93b9ef1495ba03a067ff3bd6061.jpg',
+  '122693265':'https://img.danuri.io/catalog-image/265/693/122/965ba1b61dee47dcad9f8b6a50cccff7.jpg',
+  '21637352':'https://img.danuri.io/catalog-image/352/637/021/9bfa32a8d7c941a48f1231ed002ebfc2.jpg',
+  '91909979':'https://img.danuri.io/catalog-image/979/909/091/4694cefdc5724e1ca04fe3104f31664a.jpg',
+  '73945565':'https://img.danuri.io/catalog-image/565/945/073/22e803d5f91445d5aabe475b70ae9f5a.jpg',
+  '52470452':'https://img.danuri.io/catalog-image/452/470/052/d1bf615ef263463a9418ee474da000fc.jpg',
+  '19880504':'https://img.danuri.io/catalog-image/504/880/019/42ee4f4ddbb4478ea0833af1117f8723.jpg',
+  '122703555':'https://img.danuri.io/catalog-image/555/703/122/752aa7caff8947bea6f39739d6693e68.jpg',
+  '111583416':'https://img.danuri.io/catalog-image/416/583/111/db43b871b536454589e1fde10aa8e6ac.jpg',
+  '74968073':'https://img.danuri.io/catalog-image/073/968/074/87e65ca00f314703802f4f9db47ba73c.jpg',
+  '88223060':'https://img.danuri.io/catalog-image/060/223/088/1ba274d1ecb5444dbaa057f55dd1911d.jpg',
+  '92187425':'https://img.danuri.io/catalog-image/425/187/092/c99cdc93a0a942a492e2be786fd8d1be.jpg',
+  '15587951':'https://img.danuri.io/catalog-image/951/587/015/55eb19b7b34048bc908cc1b8cb413a3f.jpg',
+  '98415869':'https://img.danuri.io/catalog-image/869/415/098/669a0478e9fd49479094b49d2c5e27cf.jpg',
+  '60063254':'https://img.danuri.io/catalog-image/254/063/060/734e23539df64818a0d9f9a3cc05e18d.jpg',
+  '5406202':'https://img.danuri.io/catalog-image/202/406/005/af2be3802e1f44d3b6983d64a0eaabb5.jpg',
+  '90507992':'https://img.danuri.io/catalog-image/992/507/090/dc88e597cd0648c6a936a26ac37e1bea.jpg',
+  '20259386':'https://img.danuri.io/catalog-image/386/259/020/4cfef728b4fe434d8c87441bfc91b013.jpg',
+  '70770629':'https://img.danuri.io/catalog-image/629/770/070/b72801e582bc46fdacb022ed0455ef66.jpg',
+  '9784527':'https://img.danuri.io/catalog-image/527/784/009/a115750bea044ecd9632104d15d56aad.jpg',
+  '88218983':'https://img.danuri.io/catalog-image/983/218/088/76ae998309a64eed9ce41aec3a7cf0a7.jpg',
+  '88222889':'https://img.danuri.io/catalog-image/889/222/088/10f46c77e20b48adb54196eac6dd64d8.jpg',
+  '88218758':'https://img.danuri.io/catalog-image/758/218/088/1696efc212f44008a10632f2064786ea.jpg',
+  '88217855':'https://img.danuri.io/catalog-image/855/217/088/7fd5baeff32e41eb959fca6f10dc7acd.jpg',
+  '88219688':'https://img.danuri.io/catalog-image/688/219/088/88fca69d76314142b6ebbc756aa3bb9b.jpg',
+  '17816156':'https://img.danuri.io/catalog-image/156/816/017/ece349571c0d44f8a88ce095442270eb.jpg',
+  '102760382':'https://img.danuri.io/catalog-image/382/760/102/aa8c0ba5ec124dd7a4ceabf773767bb5.jpg',
+  '52152566':'https://img.danuri.io/catalog-image/566/152/052/7136cbe8b05543d1b835953e039e6e68.jpg',
+  '108430193':'https://img.danuri.io/catalog-image/193/430/108/e6e1def3af8042f5b49af1e887e634e5.jpg',
+  '104604395':'https://img.danuri.io/catalog-image/395/604/104/aa6c28f0c48b412aa51f88e4281ea9a7.jpg',
+  '104754911':'https://img.danuri.io/catalog-image/911/754/104/0c6b2bcdac3c47a0ae3ebc743dcd97ed.jpg',
+  '21531833':'https://img.danuri.io/catalog-image/833/531/021/b24abbb96e2d43d1971a923bc232a2b2.jpg',
+  '88217924':'https://img.danuri.io/catalog-image/924/217/088/c071821650ac4d5db1e7e248a628eccd.jpg',
+  '14540756':'https://img.danuri.io/catalog-image/756/540/014/f9d0584c3b1943c4a8a3b2f7280a98dc.jpg',
+  '17293652':'https://img.danuri.io/catalog-image/652/293/017/720059a4c5ac4e4aa8adeafc2be9dbb6.jpg',
+  '88237514':'https://img.danuri.io/catalog-image/514/237/088/622680b893f241d9a0324b0b874f3833.jpg',
+  '28241231':'https://img.danuri.io/catalog-image/231/241/028/1b7b8bb0fbbb4bf4bfab612ddfba02f8.jpg',
+  '71717873':'https://img.danuri.io/catalog-image/873/717/071/04f94010d3e44fdaa15ff5cfa35d4121.jpg',
+  '71717849':'https://img.danuri.io/catalog-image/849/717/071/e3f7118f2f574241895252fc758e64c8.jpg',
+  '77382755':'https://img.danuri.io/catalog-image/755/382/077/cdac8944c9394c0090dc3c81c9caa2d3.jpg',
+  '77382758':'https://img.danuri.io/catalog-image/758/382/077/ae2244d7f7564456890ba4b8086ace9f.jpg',
+  '88223891':'https://img.danuri.io/catalog-image/891/223/088/1b5e4a5a67fe434096afe7b3a3a735bb.jpg',
+  '40800311':'https://img.danuri.io/catalog-image/311/800/040/fe4bee29c3ae47fab69800e426d853cf.jpg',
+  '98415863':'https://img.danuri.io/catalog-image/863/415/098/0454ce221b974bebab23c2d0286d44ea.jpg',
+  '88224677':'https://img.danuri.io/catalog-image/677/224/088/3cb1b2ccca724d0f97921fb631692f96.jpg',
+  '122670432':'https://img.danuri.io/catalog-image/432/670/122/7d7460e623ce41f89c51db2512f90465.jpg',
+  '97571747':'https://img.danuri.io/catalog-image/747/571/097/3c9b4faebbab41d6abaeac83c880aa1f.jpg',
+  '122670580':'https://img.danuri.io/catalog-image/580/670/122/0821ddb671744ea693e8db242e01f12b.jpg',
+  '122670617':'https://img.danuri.io/catalog-image/617/670/122/f9c91111d7de44c38fc9f6e37a6fa20e.png',
+  '122670478':'https://img.danuri.io/catalog-image/478/670/122/ef233be81e524ba192813c7eb263fae0.jpg',
+  '104573075':'https://img.danuri.io/catalog-image/075/573/104/627fb52a9452495896ecb6319cf29e6c.jpg',
+};
+function danImgSrc(pcode){
+  const raw=DANAWA_IMGS[pcode];
+  if(!raw)return null;
+  // 직접 URL 시도, 실패시 corsproxy 통해 로드
+  return raw;
+}
+const CHANNELS=[
+  {emoji:'🛒',name:'쿠팡',desc:'로켓배송·즉시 할인',base:q=>`https://www.coupang.com/np/search?q=${q}`},
+  {emoji:'🟢',name:'네이버 쇼핑',desc:'최저가 비교·브랜드관',base:q=>`https://search.shopping.naver.com/search/all?query=${q}`},
+  {emoji:'1️⃣',name:'11번가',desc:'다양한 브랜드·특가',base:q=>`https://search.11st.co.kr/Search.tmall?kwd=${q}`},
+  {emoji:'🛍️',name:'G마켓',desc:'스마일클럽·빅딜',base:q=>`https://browse.gmarket.co.kr/search?keyword=${q}`},
+  {emoji:'💰',name:'다나와',desc:'전문 스펙·가격 비교',base:q=>`https://search.danawa.com/dsearch.php?query=${q}`},
+  {emoji:'📦',name:'SSG닷컴',desc:'신세계·프리미엄 브랜드',base:q=>`https://www.ssg.com/search.ssg?query=${q}`},
+];
+function renderBrandPanel(k){
+  const info=BRAND_INFO[k];
+  if(!info||k==='안마의자'){document.getElementById('brand-panel').innerHTML='';return;}
+  document.getElementById('brand-panel').innerHTML=`<div class="brand-panel"><div class="brand-logo">${info.logo}</div><div class="brand-info-text"><div class="brand-name">${info.name}</div><div class="brand-meta">${info.meta}</div><div class="brand-desc">${info.desc}</div>${info.url?`<a class="brand-link" href="${info.url}" target="_blank">공식 홈페이지 →</a>`:''}</div></div>`;
+}
+function renderChannels(k){
+  const label=k==='안마의자'?'안마의자 전체':k;
+  document.getElementById('price-channels').innerHTML=`<p class="cat-hint"><strong>${label}</strong> — 채널을 클릭하면 모델별 검색 창이 열려요</p><div class="channel-grid">${CHANNELS.map(ch=>`<div class="ch-card" onclick="openModal('${ch.name}','${k}')"><div class="ch-emoji">${ch.emoji}</div><div class="ch-name">${ch.name}</div><div class="ch-desc">${ch.desc}</div><div class="ch-cta">모델별 검색 →</div></div>`).join('')}</div>`;
+}
+function setTab(btn,k){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBrandPanel(k);renderChannels(k);}
+function openModal(cn,k){
+  const ch=CHANNELS.find(c=>c.name===cn);
+  const models=BRAND_MODELS[k]||[];
+  const bl=k==='안마의자'?'전체 안마의자':k;
+  document.getElementById('modal-title').textContent=`${ch.emoji} ${cn} — 모델별 최저가`;
+  document.getElementById('modal-sub').textContent=`${bl} · 클릭 시 ${cn}에서 최저가 검색`;
+  document.getElementById('modal-body').innerHTML=models.map(m=>`<div class="model-row"><div><div class="model-name">${m.name}</div><div class="model-sub2">${m.sub}</div></div><a class="model-btn" href="${ch.base(encodeURIComponent(m.name))}" target="_blank">최저가 검색</a></div>`).join('')+`<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;"><a class="model-btn" style="width:100%;text-align:center;display:block;padding:9px;" href="${ch.base(encodeURIComponent(k))}" target="_blank">${bl} 전체 검색 →</a></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(e){if(e&&e.target!==document.getElementById('modal-overlay'))return;document.getElementById('modal-overlay').classList.remove('open');document.body.style.overflow='';}
+let NAVER_CLIENT_ID=localStorage.getItem('naver_id')||'',NAVER_CLIENT_SECRET=localStorage.getItem('naver_secret')||'';
+const priceCache={};let activeFetchBrand=null;
+function toNum(s){if(!s)return Infinity;return parseInt(String(s).replace(/[^0-9]/g,''))||Infinity;}
+function fmtPrice(n){return Number(n).toLocaleString('ko-KR')+'원';}
+function extractDanawaInfo(html){
+  // 이미지: danuri.io URL 탐색 → images.weserv.nl 프록시로 감싸서 핫링크/CORS 우회
+  let img=null;
+  const imgM=html.match(/(?:https?:\/\/|\/\/)img\.danuri\.io\/catalog-image\/[0-9a-zA-Z\/\-_]+\.(?:jpg|jpeg|png|webp)/i);
+  if(imgM){
+    let raw=imgM[0];if(raw.startsWith('//'))raw='https:'+raw;
+    raw=raw.split('?')[0];
+    img=`https://images.weserv.nl/?url=${encodeURIComponent(raw)}&w=96&h=96&fit=contain&output=jpg`;
+  }
+  let price=null;
+  const m1=html.match(/최저가\s+([0-9,]{5,})원/);if(m1)price=m1[1]+'원';
+  if(!price){const m2=html.match(/<strong>([0-9,]{5,})<\/strong>\s*원/);if(m2)price=m2[1]+'원';}
+  if(!price){const m3=html.match(/"lowPrice"\s*:\s*"?([0-9]{5,})"?/);if(m3)price=Number(m3[1]).toLocaleString('ko-KR')+'원';}
+  if(!price)return img?{price:null,mall:null,img}:null;
+  let mall=null;
+  const cmpny1=html.match(/cmpny_info[^>]+alt="([^"]{2,20})"/);
+  const cmpny2=html.match(/alt="([^"]{2,20})"[^>]+cmpny_info/);
+  if(cmpny1) mall=cmpny1[1].trim();
+  else if(cmpny2) mall=cmpny2[1].trim();
+  if(!mall){
+    const mallPatterns=[
+      /"lowestMallName"\s*:\s*"([^"]{2,30})"/,
+      /"shopNm"\s*:\s*"([^"]{2,30})"/,
+      /"mallName"\s*:\s*"([^"]{2,30})"/,
+      /"sellerName"\s*:\s*"([^"]{2,30})"/,
+      /class="[^"]*mall[_\-]?name[^"]*"[^>]*>\s*([^<\s][^<]{1,28}?)\s*</,
+    ];
+    for(const p of mallPatterns){const m=html.match(p);if(m&&m[1]&&m[1].trim().length>1){mall=m[1].trim();break;}}
+  }
+  return{price,mall,img};
+}
+async function proxyGet(url){
+  const enc=encodeURIComponent(url);
+  // 3개 프록시 동시 경쟁 — 가장 먼저 응답하는 것 사용
+  const allorigins=fetch('https://api.allorigins.win/get?url='+enc,{signal:AbortSignal.timeout(8000)})
+    .then(r=>r.ok?r.json():null).then(j=>j?.contents&&j.contents.length>500?j.contents:null).catch(()=>null);
+  const codetabs=fetch('https://api.codetabs.com/v1/proxy?quest='+enc,{signal:AbortSignal.timeout(8000)})
+    .then(r=>r.ok?r.text():null).then(t=>t&&t.length>500?t:null).catch(()=>null);
+  const corsproxy=fetch('https://corsproxy.io/?'+enc,{signal:AbortSignal.timeout(8000)})
+    .then(r=>r.ok?r.text():null).then(t=>t&&t.length>500?t:null).catch(()=>null);
+  const result=await Promise.any([
+    allorigins.then(r=>r||Promise.reject()),
+    codetabs.then(r=>r||Promise.reject()),
+    corsproxy.then(r=>r||Promise.reject()),
+  ]).catch(()=>null);
+  if(!result)throw new Error('proxy fail');
+  return result;
+}
+async function fetchDanawa(pcode){
+  const key='dp:'+pcode;if(key in priceCache)return priceCache[key];
+  try{
+    const html=await proxyGet(`https://prod.danawa.com/info/?pcode=${pcode}`);
+    const info=extractDanawaInfo(html);
+    const href=`https://prod.danawa.com/info/?pcode=${pcode}`;
+    priceCache[key]=info?.price?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href}:null;
+    if(info?.img&&!priceCache[key])priceCache['img:'+pcode]=info.img;
+  }catch(e){return null;} // 네트워크 오류 시 캐시 저장 안 함 (재시도 가능)
+  return priceCache[key];
+}
+async function fetchDanawaSearch(query){
+  const key='ds:'+query;if(key in priceCache)return priceCache[key];
+  const href=`https://search.danawa.com/dsearch.php?query=${encodeURIComponent(query)}&sort=lowest_cost`;
+  try{
+    const html=await proxyGet(href);
+    const info=extractDanawaInfo(html);
+    priceCache[key]=info?.price?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href}:null;
+  }catch(e){return null;} // 네트워크 오류 시 캐시 저장 안 함
+  return priceCache[key];
+}
+async function fetchNaver(query){
+  if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return null;
+  const key='np:'+query;if(key in priceCache)return priceCache[key];
+  const naverUrl=`https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&sort=asc&display=3`;
+  const naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
+  let data=null;
+  const isFile=location.protocol==='file:';
+  // file:// 환경에서는 직접 호출 스킵 (항상 CORS 실패 → 8초 낭비 방지)
+  if(!isFile){
+    try{
+      const r=await fetch(naverUrl,{headers:naverHdrs,signal:AbortSignal.timeout(4000)});
+      if(r.ok)data=await r.json();
+    }catch(e){}
+  }
+  // corsproxy.io + allorigins 동시 경쟁 (헤더 전달)
+  if(!data){
+    const p1=fetch('https://corsproxy.io/?'+encodeURIComponent(naverUrl),{headers:naverHdrs,signal:AbortSignal.timeout(8000)})
+      .then(r=>r.ok?r.json():null).catch(()=>null);
+    const p2=fetch('https://api.allorigins.win/get?url='+encodeURIComponent(naverUrl+'&clientId='+NAVER_CLIENT_ID+'&clientSecret='+NAVER_CLIENT_SECRET),{signal:AbortSignal.timeout(8000)})
+      .then(r=>r.ok?r.json():null).then(j=>j?.contents?JSON.parse(j.contents):null).catch(()=>null);
+    data=await Promise.any([
+      p1.then(d=>d?.items?d:Promise.reject()),
+      p2.then(d=>d?.items?d:Promise.reject()),
+    ]).catch(()=>null);
+  }
+  if(!data)return null; // 모든 fetch 실패 시 캐시 저장 안 함
+  try{
+    const item=data?.items?.[0];
+    if(item&&item.lprice){const mallName=(item.mallName||'네이버').replace(/<[^>]*>/g,'');priceCache[key]={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(query)}&sort=price_asc`};}
+    else priceCache[key]=null;
+  }catch(e){return null;}
+  return priceCache[key];
+}
+const SRC_COLOR={'다나와':'#1d4ed8','네이버':'#05944f','참고가':'#9ca3af'};
+const MALL_COLOR={
+  'CJ온스타일':'#7c3aed',
+  '쿠팡':'#ee4d2d',
+  '롯데홈쇼핑':'#dc2626',
+  '롯데ON':'#be123c',
+  '하이마트':'#0369a1',
+  'G마켓':'#16a34a',
+  '현대Hmall':'#1e3a8a',
+  '이마트몰':'#eab308',
+  'SSG.COM':'#eab308',
+  '신세계라이브쇼핑':'#b91c1c',
+  '쇼핑엔티':'#0891b2',
+  '삼성 진월효천':'#1d4ed8',
+  '믿고사는샵':'#6d28d9',
+  '리쏘':'#92400e',
+  '11번가':'#ea580c',
+  '코웨이몰':'#0d9488',
+  '쿠쿠몰':'#d97706',
+  '신세계몰':'#7f1d1d',
+  '비욘드릴렉스몰':'#1e40af',
+  '비욘드릴렉스':'#1e40af',
+  'VIBETHERM':'#1e40af',
+};
+// 밝은 배경색은 텍스트를 어둡게
+const MALL_LIGHT_BG=new Set(['#eab308']);
+function makeBadge(label,bg){
+  const txtColor=MALL_LIGHT_BG.has(bg)?'#1a1a2e':'white';
+  return`<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;background:${bg};color:${txtColor};white-space:nowrap;vertical-align:middle">${label}</span>`;
+}
+function setCellPrice(cellId,result){
+  const el=document.getElementById(cellId);if(!el)return;
+  if(result?.price){
+    const mallName=result.mall||(result.src==='다나와'?'다나와':result.src==='네이버'?'네이버':'참고가');
+    const bg=MALL_COLOR[mallName]||SRC_COLOR[result.src]||'#9ca3af';
+    const badge=makeBadge(mallName,bg);
+    el.innerHTML='<a class="price-ref-link" href="'+result.href+'" target="_blank">'+result.price+' '+badge+'</a>';
+  }
+  else{el.innerHTML='<span style="color:#d1d5db;font-size:11px">—</span>';}
+}
+function setCellPriceDual(cellId,danawa,naver){
+  const el=document.getElementById(cellId);if(!el)return;
+  let html='';
+  if(danawa?.price){
+    const mallName=danawa.mall||'다나와';
+    const bg=MALL_COLOR[mallName]||SRC_COLOR['다나와']||'#1d4ed8';
+    html+='<div class="price-row"><span class="price-src price-src-d">D</span>'
+      +'<a class="price-ref-link" href="'+danawa.href+'" target="_blank">'+danawa.price+' '+makeBadge(mallName,bg)+'</a></div>';
+  }
+  if(naver?.price){
+    const mallName=naver.mall||'네이버';
+    const bg=MALL_COLOR[mallName]||SRC_COLOR['네이버']||'#05944f';
+    html+='<div class="price-row"><span class="price-src price-src-n">N</span>'
+      +'<a class="price-ref-link" href="'+naver.href+'" target="_blank">'+naver.price+' '+makeBadge(mallName,bg)+'</a></div>';
+  }
+  el.innerHTML=html||'<span style="color:#d1d5db;font-size:11px">—</span>';
+}
+// localStorage 가격 캐시 (4시간 유효)
+const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
+function savePriceCache(brand,i,danawa,naver){
+  try{localStorage.setItem(LC_PFX+brand+'_'+i,JSON.stringify({danawa,naver,ts:Date.now()}));}catch(e){}
+}
+function loadPriceCache(brand,i){
+  try{
+    const raw=localStorage.getItem(LC_PFX+brand+'_'+i);
+    if(!raw)return null;
+    const d=JSON.parse(raw);
+    if(Date.now()-d.ts>LC_TTL)return null;
+    return d;
+  }catch(e){return null;}
+}
+function clearPriceCache(brand){
+  try{Object.keys(localStorage).forEach(k=>{if(k.startsWith(LC_PFX+brand+'_'))localStorage.removeItem(k);});}catch(e){}
+}
+async function loadBrandPrices(brand){
+  activeFetchBrand=brand;
+  const models=PRICE_MODELS[brand]||[];
+  const hasNaver=!!(NAVER_CLIENT_ID&&NAVER_CLIENT_SECRET);
+  // 캐시 즉시 표시 (첫 조회 전 빠른 렌더)
+  models.forEach((m,i)=>{
+    if(m.price==='문의 필요')return;
+    const c=loadPriceCache(brand,i);
+    if(c)setCellPriceDual('pc-'+brand+'-'+i,c.danawa,c.naver);
+  });
+  // 순차 조회 200ms 간격 (rate limit 방지), 모델당 N+D는 동시 fetch
+  for(let i=0;i<models.length;i++){
+    if(activeFetchBrand!==brand)return;
+    const m=models[i];
+    if(m.price==='문의 필요')continue;
+    if(i>0)await new Promise(r=>setTimeout(r,200));
+    if(activeFetchBrand!==brand)return;
+    const [naver,danawa]=await Promise.all([
+      hasNaver?fetchNaver(m.full).catch(()=>null):Promise.resolve(null),
+      (m.pcode?fetchDanawa(m.pcode):fetchDanawaSearch(m.full)).catch(()=>null)
+    ]);
+    if(activeFetchBrand!==brand)return;
+    const imgSrc=danawa?.img||(m.pcode?priceCache['img:'+m.pcode]:null)||naver?.img||null;
+    if(imgSrc){const imgEl=document.getElementById('img-'+brand+'-'+i);if(imgEl){imgEl.onerror=null;imgEl.src=imgSrc;}}
+    setCellPriceDual('pc-'+brand+'-'+i,danawa,naver);
+    if(danawa||naver)savePriceCache(brand,i,danawa,naver);
+  }
+}
+function refreshPrices(){
+  const btn=document.querySelector('.pb-btn.active');if(!btn)return;
+  const brand=btn.textContent.trim();
+  (PRICE_MODELS[brand]||[]).forEach(m=>{delete priceCache['dp:'+m.pcode];delete priceCache['ds:'+m.full];delete priceCache['np:'+m.full];});
+  clearPriceCache(brand);
+  renderPriceTable(brand);
+}
+function clearNaverKey(){localStorage.removeItem('naver_id');localStorage.removeItem('naver_secret');NAVER_CLIENT_ID='';NAVER_CLIENT_SECRET='';document.getElementById('naver-id').value='';document.getElementById('naver-secret').value='';}
+function saveNaverKey(){
+  NAVER_CLIENT_ID=document.getElementById('naver-id').value.trim();
+  NAVER_CLIENT_SECRET=document.getElementById('naver-secret').value.trim();
+  localStorage.setItem('naver_id',NAVER_CLIENT_ID);
+  localStorage.setItem('naver_secret',NAVER_CLIENT_SECRET);
+  document.getElementById('naver-api-setup').style.display='none';
+  refreshPrices();
+}
+function renderPriceTable(brand){
+  const models=PRICE_MODELS[brand]||[];
+  const rows=models.map((m,i)=>{
+    const cellId=`pc-${brand}-${i}`;
+    const href=m.href||( m.pcode?`https://prod.danawa.com/info/?pcode=${m.pcode}`:`https://search.danawa.com/dsearch.php?query=${encodeURIComponent(m.full)}&sort=lowest_cost`);
+    let priceContent;
+    if(m.price==='문의 필요'){priceContent=`<span style="color:#9ca3af;font-size:13px">문의 필요</span>`;}
+    else if(m.price==='미등록'){priceContent=`<span class="price-loading">조회중...</span>`;}
+    else{
+      const mallName=m.mall||'참고가';
+      const bg=MALL_COLOR[mallName]||'#9ca3af';
+      priceContent=`<a class="price-ref-link" href="${href}" target="_blank">${m.price} ${makeBadge(mallName,bg)}</a>`;
+    }
+    const BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+    const imgId=`img-${brand}-${i}`;
+    const staticImg=m.pcode?danImgSrc(m.pcode):null;
+    const imgEl=staticImg
+      ?`<img id="${imgId}" class="model-img" src="${staticImg}" onerror="this.onerror=null;this.src='https://corsproxy.io/?url='+encodeURIComponent('${staticImg}');this.onerror=function(){this.src='${BLANK}'}">`
+      :`<img id="${imgId}" class="model-img" src="${BLANK}">`;
+    var yearBadge=m.year?'<span style="font-size:9px;background:#e0f2fe;color:#0369a1;border-radius:3px;padding:1px 5px;font-weight:700">'+m.year+'</span>':'';
+    return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
+  }).join('');
+  document.getElementById('price-compare-table').innerHTML=`<div class="plist">${rows}</div>`;
+  loadBrandPrices(brand);
+}
+function setPriceBrand(btn,brand){document.querySelectorAll('.pb-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderPriceTable(brand);}
+
+const PROXIES=[url=>`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`];
+function rssUrl(q){return`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=ko&gl=KR&ceid=KR:ko`;}
+function stripHtml(s){return(s||'').replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').trim();}
+function relTime(d){const diff=Math.floor((Date.now()-new Date(d))/60000);if(diff<1)return'방금';if(diff<60)return diff+'분 전';if(diff<1440)return Math.floor(diff/60)+'시간 전';return Math.floor(diff/1440)+'일 전';}
+async function loadNews(query,elId){
+  const el=document.getElementById(elId);
+  el.innerHTML='<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
+  let lastErr;
+  for(const pFn of PROXIES){
+    try{
+      const resp=await fetch(pFn(rssUrl(query)),{signal:AbortSignal.timeout(9000)});
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      const ct=resp.headers.get('content-type')||'';
+      let xml;if(ct.includes('json')){const j=await resp.json();xml=j.contents??'';}else xml=await resp.text();
+      if(!xml)throw new Error('empty');
+      const doc=new DOMParser().parseFromString(xml,'text/xml');
+      if(doc.querySelector('parsererror'))throw new Error('parse fail');
+      const items=[...doc.querySelectorAll('item')].slice(0,5);
+      if(!items.length)throw new Error('no items');
+      const html=items.map(it=>{
+        const title=stripHtml(it.querySelector('title')?.textContent||'');
+        const linkEl=it.getElementsByTagName('link')[0];
+        const link=(linkEl?.nextSibling?.nodeValue||linkEl?.textContent||it.querySelector('guid')?.textContent||'#').trim();
+        const pub=it.querySelector('pubDate')?.textContent||'';
+        const src=it.querySelector('source')?.textContent||'';
+        return`<div class="news-item"><a href="${link}" target="_blank"><div class="news-title">${title}</div><div class="news-meta">${src}${pub?' · '+relTime(pub):''}</div></a></div>`;
+      }).join('');
+      const ts=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+      el.innerHTML=html+`<div class="ts">${ts} 기준</div>`;
+      return;
+    }catch(e){lastErr=e;await new Promise(r=>setTimeout(r,800));}
+  }
+  el.innerHTML=`<div class="error-box">로드 실패 — 새로고침을 눌러 재시도하세요</div>`;
+}
+async function init(){
+  const now=new Date();
+  document.getElementById('ts-header').textContent=now.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})+' '+now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준';
+  // 저장된 네이버 키 입력창에 자동 채우기
+  if(NAVER_CLIENT_ID) document.getElementById('naver-id').value=NAVER_CLIENT_ID;
+  if(NAVER_CLIENT_SECRET) document.getElementById('naver-secret').value=NAVER_CLIENT_SECRET;
+  renderPriceTable('파나소닉');
+  await loadNews('쇼핑 유통 이커머스','shopping-news');
+}
+init();
+setInterval(()=>{ refreshPrices(); loadNews('쇼핑 유통 이커머스','shopping-news'); }, 5*60*1000);
+</script>
+</body>
+</html>
