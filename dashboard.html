@@ -85,10 +85,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .price-ref-link { font-size: 13px; font-weight: 700; color: #111827; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
 .price-ref-link:hover { color: #5c6bc0; }
 .price-loading { color: #9ca3af; font-size: 10px; animation: pricePulse 1.4s ease-in-out infinite; }
-.price-row { display:flex; align-items:center; gap:5px; }
+.price-dual-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.price-row { display:flex; align-items:center; gap:4px; }
 .price-src { font-size:9px; font-weight:800; padding:1px 5px; border-radius:3px; flex-shrink:0; letter-spacing:0.3px; }
 .price-src-d { background:#dbeafe; color:#1d4ed8; }
 .price-src-n { background:#dcfce7; color:#15803d; }
+.price-divider { color:#e5e7eb; font-size:14px; font-weight:300; }
+.price-win { font-weight:800; }
+.price-lose { opacity:0.45; font-size:11px; }
+.price-best-tag { font-size:8px; background:#fef08a; color:#854d0e; padding:1px 4px; border-radius:3px; font-weight:800; flex-shrink:0; }
 @keyframes pricePulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 .price-refresh-btn { padding: 3px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; cursor: pointer; }
 .price-refresh-btn:hover { background: #ede9fe; }
@@ -483,26 +488,15 @@ async function fetchNaver(query){
   const key='np:'+query;if(key in priceCache)return priceCache[key];
   const naverUrl=`https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&sort=asc&display=3`;
   const naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
-  let data=null;
-  const isFile=location.protocol==='file:';
-  // file:// 환경에서는 직접 호출 스킵 (항상 CORS 실패 → 8초 낭비 방지)
-  if(!isFile){
-    try{
-      const r=await fetch(naverUrl,{headers:naverHdrs,signal:AbortSignal.timeout(4000)});
-      if(r.ok)data=await r.json();
-    }catch(e){}
-  }
-  // corsproxy.io + allorigins 동시 경쟁 (헤더 전달)
-  if(!data){
-    const p1=fetch('https://corsproxy.io/?'+encodeURIComponent(naverUrl),{headers:naverHdrs,signal:AbortSignal.timeout(8000)})
-      .then(r=>r.ok?r.json():null).catch(()=>null);
-    const p2=fetch('https://api.allorigins.win/get?url='+encodeURIComponent(naverUrl+'&clientId='+NAVER_CLIENT_ID+'&clientSecret='+NAVER_CLIENT_SECRET),{signal:AbortSignal.timeout(8000)})
-      .then(r=>r.ok?r.json():null).then(j=>j?.contents?JSON.parse(j.contents):null).catch(()=>null);
-    data=await Promise.any([
-      p1.then(d=>d?.items?d:Promise.reject()),
-      p2.then(d=>d?.items?d:Promise.reject()),
-    ]).catch(()=>null);
-  }
+  // 브라우저에서는 직접 호출 불가 (항상 CORS 실패) → 즉시 프록시 경쟁
+  const p1=fetch('https://corsproxy.io/?'+encodeURIComponent(naverUrl),{headers:naverHdrs,signal:AbortSignal.timeout(6000)})
+    .then(r=>r.ok?r.json():null).catch(()=>null);
+  const p2=fetch('https://api.allorigins.win/get?url='+encodeURIComponent(naverUrl),{headers:naverHdrs,signal:AbortSignal.timeout(6000)})
+    .then(r=>r.ok?r.json():null).then(j=>j?.contents?JSON.parse(j.contents):null).catch(()=>null);
+  const data=await Promise.any([
+    p1.then(d=>d?.items?d:Promise.reject()),
+    p2.then(d=>d?.items?d:Promise.reject()),
+  ]).catch(()=>null);
   if(!data)return null; // 모든 fetch 실패 시 캐시 저장 안 함
   try{
     const item=data?.items?.[0];
@@ -553,20 +547,29 @@ function setCellPrice(cellId,result){
 }
 function setCellPriceDual(cellId,danawa,naver){
   const el=document.getElementById(cellId);if(!el)return;
-  let html='';
-  if(danawa?.price){
-    const mallName=danawa.mall||'다나와';
-    const bg=MALL_COLOR[mallName]||SRC_COLOR['다나와']||'#1d4ed8';
-    html+='<div class="price-row"><span class="price-src price-src-d">D</span>'
-      +'<a class="price-ref-link" href="'+danawa.href+'" target="_blank">'+danawa.price+' '+makeBadge(mallName,bg)+'</a></div>';
+  if(!danawa?.price&&!naver?.price){el.innerHTML='<span style="color:#d1d5db;font-size:11px">—</span>';return;}
+  function makeBlock(result,srcClass,srcLabel,isWin,showTag){
+    const mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
+    const bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
+    const cls=isWin?'price-win':'price-lose';
+    return '<div class="price-row">'
+      +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
+      +'<a class="price-ref-link '+cls+'" href="'+result.href+'" target="_blank">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
+      +(showTag?'<span class="price-best-tag">최저</span>':'')
+      +'</div>';
   }
-  if(naver?.price){
-    const mallName=naver.mall||'네이버';
-    const bg=MALL_COLOR[mallName]||SRC_COLOR['네이버']||'#05944f';
-    html+='<div class="price-row"><span class="price-src price-src-n">N</span>'
-      +'<a class="price-ref-link" href="'+naver.href+'" target="_blank">'+naver.price+' '+makeBadge(mallName,bg)+'</a></div>';
+  if(danawa?.price&&naver?.price){
+    const dWin=toNum(danawa.price)<=toNum(naver.price);
+    el.innerHTML='<div class="price-dual-row">'
+      +makeBlock(danawa,'price-src-d','D',dWin,dWin)
+      +'<span class="price-divider">|</span>'
+      +makeBlock(naver,'price-src-n','N',!dWin,!dWin)
+      +'</div>';
+  } else if(danawa?.price){
+    el.innerHTML=makeBlock(danawa,'price-src-d','D',true,false);
+  } else {
+    el.innerHTML=makeBlock(naver,'price-src-n','N',true,false);
   }
-  el.innerHTML=html||'<span style="color:#d1d5db;font-size:11px">—</span>';
 }
 // localStorage 가격 캐시 (4시간 유효)
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
@@ -595,23 +598,26 @@ async function loadBrandPrices(brand){
     const c=loadPriceCache(brand,i);
     if(c)setCellPriceDual('pc-'+brand+'-'+i,c.danawa,c.naver);
   });
-  // 순차 조회 200ms 간격 (rate limit 방지), 모델당 N+D는 동시 fetch
-  for(let i=0;i<models.length;i++){
-    if(activeFetchBrand!==brand)return;
-    const m=models[i];
-    if(m.price==='문의 필요')continue;
-    if(i>0)await new Promise(r=>setTimeout(r,200));
-    if(activeFetchBrand!==brand)return;
-    const [naver,danawa]=await Promise.all([
-      hasNaver?fetchNaver(m.full).catch(()=>null):Promise.resolve(null),
-      (m.pcode?fetchDanawa(m.pcode):fetchDanawaSearch(m.full)).catch(()=>null)
-    ]);
-    if(activeFetchBrand!==brand)return;
-    const imgSrc=danawa?.img||(m.pcode?priceCache['img:'+m.pcode]:null)||naver?.img||null;
-    if(imgSrc){const imgEl=document.getElementById('img-'+brand+'-'+i);if(imgEl){imgEl.onerror=null;imgEl.src=imgSrc;}}
-    setCellPriceDual('pc-'+brand+'-'+i,danawa,naver);
-    if(danawa||naver)savePriceCache(brand,i,danawa,naver);
+  // 3개 워커 동시 처리 (rate limit 방지하면서 3배 빠름)
+  let idx=0;
+  async function worker(){
+    while(idx<models.length){
+      if(activeFetchBrand!==brand)return;
+      const i=idx++;
+      const m=models[i];
+      if(m.price==='문의 필요')continue;
+      const [naver,danawa]=await Promise.all([
+        hasNaver?fetchNaver(m.full).catch(()=>null):Promise.resolve(null),
+        (m.pcode?fetchDanawa(m.pcode):fetchDanawaSearch(m.full)).catch(()=>null)
+      ]);
+      if(activeFetchBrand!==brand)return;
+      const imgSrc=danawa?.img||(m.pcode?priceCache['img:'+m.pcode]:null)||naver?.img||null;
+      if(imgSrc){const imgEl=document.getElementById('img-'+brand+'-'+i);if(imgEl){imgEl.onerror=null;imgEl.src=imgSrc;}}
+      setCellPriceDual('pc-'+brand+'-'+i,danawa,naver);
+      if(danawa||naver)savePriceCache(brand,i,danawa,naver);
+    }
   }
+  await Promise.all([worker(),worker(),worker()]);
 }
 function refreshPrices(){
   const btn=document.querySelector('.pb-btn.active');if(!btn)return;
