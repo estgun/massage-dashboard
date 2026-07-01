@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='11';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='12';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -532,6 +532,7 @@ async function fetchNaver(query){
                    '할부개념','월비용','월사용','사용권','이용가'];
     // 용품/악세서리 키워드 — 전용 시트/커버/쿠션/매트 등 안마의자 부속품 제외
     var ACCESSORY_KW=['전용시트','전용커버','전용쿠션','전용매트','호환시트','호환쿠션','시트커버','쿠션커버','전용등받이','패드커버'];
+    var REFURB_KW=['리퍼','리퍼브','refurb','전시','반품','b급'];
     var allItems=(data.items||[]).map(function(it){
       var t=(it.title||'').replace(/<[^>]*>/g,'').replace(/\s/g,'').toLowerCase();
       var mn=(it.mallName||'').replace(/\s/g,'').toLowerCase();
@@ -539,20 +540,30 @@ async function fetchNaver(query){
       var hasRental=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
       var hasAccessory=ACCESSORY_KW.some(function(kw){return t.indexOf(kw.replace(/\s/g,''))>-1;});
       var hasAccessory2=(t.indexOf('전용')>-1&&(t.indexOf('시트')>-1||t.indexOf('커버')>-1||t.indexOf('쿠션')>-1||t.indexOf('매트')>-1));
-      return {it:it,price:price,hasRental:hasRental,hasAccessory:hasAccessory||hasAccessory2};
+      var isRefurb=REFURB_KW.some(function(kw){return t.indexOf(kw)>-1;});
+      var isSoldOut=t.indexOf('품절')>-1||t.indexOf('soldout')>-1||t.indexOf('판매중지')>-1||t.indexOf('단종')>-1;
+      return {it:it,price:price,hasRental:hasRental,hasAccessory:hasAccessory||hasAccessory2,isRefurb:isRefurb,isSoldOut:isSoldOut};
     });
-    // 1단계: 렌탈+용품 제외 + 500,000 이상
-    var items=allItems.filter(function(x){return !x.hasRental&&!x.hasAccessory&&x.price>=500000;}).map(function(x){return x.it;});
-    // 2단계 fallback: 렌탈만 제외 + 300,000 이상 (용품 필터 완화)
-    if(items.length===0) items=allItems.filter(function(x){return !x.hasRental&&x.price>=300000;}).map(function(x){return x.it;});
-    // 3단계 fallback: 렌탈만 제외 + 100,000 이상 (가격 임계값 대폭 완화)
-    if(items.length===0) items=allItems.filter(function(x){return !x.hasRental&&x.price>=100000;}).map(function(x){return x.it;});
+    // 정상 제품만 필터 (렌탈/용품/리퍼/품절 제외)
+    var normalItems=allItems.filter(function(x){return !x.hasRental&&!x.hasAccessory&&!x.isRefurb&&!x.isSoldOut;});
+    // 1단계: 500,000 이상
+    var items=normalItems.filter(function(x){return x.price>=500000;}).map(function(x){return x.it;});
+    // 2단계 fallback: 300,000 이상
+    if(items.length===0) items=normalItems.filter(function(x){return x.price>=300000;}).map(function(x){return x.it;});
+    // 3단계 fallback: 100,000 이상
+    if(items.length===0) items=normalItems.filter(function(x){return x.price>=100000;}).map(function(x){return x.it;});
+    // 리퍼 최저가 (렌탈/용품/품절 제외, 리퍼만)
+    var refurbItems=allItems.filter(function(x){return !x.hasRental&&!x.hasAccessory&&!x.isSoldOut&&x.isRefurb&&x.price>=100000;});
     var item=items[0];
     if(item&&item.lprice){
       var mallName=(item.mallName||'네이버').replace(/<[^>]*>/g,'');
-      var itemTitle=(item.title||'').replace(/<[^>]*>/g,'').toLowerCase();
-      var isRefurb=itemTitle.indexOf('리퍼')>-1||itemTitle.indexOf('리퍼브')>-1||itemTitle.indexOf('refurb')>-1;
-      priceCache[key]={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(query)+'&sort=price_asc',refurb:isRefurb};
+      var result={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(query)+'&sort=price_asc'};
+      // 리퍼 최저가 별도 첨부
+      if(refurbItems.length>0){
+        var ri=refurbItems[0].it;
+        result.refurb={price:fmtPrice(ri.lprice),mall:(ri.mallName||'네이버').replace(/<[^>]*>/g,''),href:ri.link||result.href};
+      }
+      priceCache[key]=result;
     } else {return null;}
   }catch(e){return null;}
   return priceCache[key];
@@ -600,12 +611,22 @@ var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   var mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
   var bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
   var cls=isWin?(srcLabel==='D'?'price-win-d':mallName==='쿠팡'?'price-win-coupang':'price-win-n'):'price-lose';
-  return '<div class="price-row">'
+  var html='<div class="price-row">'
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
     +'<a class="price-ref-link '+cls+'" href="'+result.href+'" target="_blank">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
-    +(result.refurb?'<span style="font-size:9px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:2px;">리퍼</span>':'')
     +(showTag?'<span class="price-best-tag">최저</span>':'')
     +'</div>';
+  // 리퍼 최저가 별도 줄
+  if(result.refurb){
+    var rb=result.refurb;
+    var rbg=MALL_COLOR[rb.mall]||'#6b7280';
+    html+='<div class="price-row" style="margin-top:2px;">'
+      +'<span class="price-src '+srcClass+'" style="opacity:0.5">'+srcLabel+'</span>'
+      +'<a class="price-ref-link" href="'+rb.href+'" target="_blank" style="color:#92400e;font-size:11px;">'+rb.price+' '+makeBadge(rb.mall,rbg)+'</a>'
+      +'<span style="font-size:9px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:2px;">리퍼</span>'
+      +'</div>';
+  }
+  return html;
 };
 function setCellPriceDual(cellId,danawa,naver){
   var el=document.getElementById(cellId);if(!el)return;
@@ -624,7 +645,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v16_excluderental';
+const LC_VER='v17_refurb_soldout';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
