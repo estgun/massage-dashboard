@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='16';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='18';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -265,7 +265,7 @@ const PRICE_MODELS = {
     {name:'클라쎄 시그니처',full:'코지마 클라쎄시그니처',sub:'프리미엄 디자인',pcode:'5406202',price:'미등록',year:'2017'},
     {name:'오블리크',full:'코지마 오블리크',sub:'2025 베스트셀러',pcode:'90507992',price:'미등록',year:'2024'},
     {name:'더블모션',full:'코지마 더블모션',sub:'듀얼 엔진',pcode:'20259386',price:'미등록',year:'2022'},
-    {name:'아르코',full:'코지마 아르코',sub:'4D 입체',pcode:'70770629',price:'미등록',year:'2023'},
+    {name:'아르코',full:'코지마 아르코',sub:'4D 입체',pcode:'70770629',price:'미등록',year:'2024'},
     {name:'카이저',full:'코지마 카이저',sub:'22가지 자동코스',pcode:'9784527',price:'미등록',year:'2019'},
   ],
   '리쏘':[
@@ -697,7 +697,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v21_mallcolor';
+const LC_VER='v23_pcode_fix';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
@@ -741,7 +741,7 @@ async function loadBrandPrices(brand){
         var imgSrc=danawa?.img||(m.pcode?priceCache['img:'+m.pcode]:null)||naver?.img||null;
         if(imgSrc){var imgEl=document.getElementById('img-'+brand+'-'+i);if(imgEl){imgEl.onerror=null;imgEl.src=imgSrc;}}
         setCellPriceDual('pc-'+brand+'-'+i,danawa,naver);
-        if(danawa||naver)savePriceCache(brand,i,danawa,naver);
+        if(danawa||naver){savePriceCache(brand,i,danawa,naver);renderPriceChart(brand);}
       }
     }
   };
@@ -818,6 +818,28 @@ function renderPriceTable(brand){
   loadBrandPrices(brand);
 }
 function setPriceBrand(btn,brand){document.querySelectorAll('.pb-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderPriceTable(brand);}
+function renderPriceChart(brand){
+  var el=document.getElementById('price-chart-bars');if(!el)return;
+  var models=PRICE_MODELS[brand]||[];
+  var pts=models.map(function(m,i){
+    var dc=priceCache['dp:'+m.pcode]||priceCache['ds:'+m.full]||null;
+    var nc=priceCache['np:'+m.full]||null;
+    var best=null;
+    if(dc&&nc){best=toNum(dc.price)<=toNum(nc.price)?dc:nc;}else{best=dc||nc;}
+    var p=best?toNum(best.price):null;
+    var mallName=best?.mall||(best?.src==='다나와'?'다나와':'네이버');
+    var color=MALL_COLOR[mallName]||SRC_COLOR[best?.src]||'#9ca3af';
+    return{name:m.name,price:p,color:color};
+  }).filter(function(p){return p.price&&p.price<Infinity;});
+  if(pts.length===0){el.innerHTML='<span style="font-size:11px;color:#9ca3af">가격 조회중...</span>';return;}
+  var maxP=Math.max.apply(null,pts.map(function(p){return p.price;}));
+  var rows=pts.map(function(p){
+    var pct=Math.max(4,Math.round(p.price/maxP*100));
+    var lbl=p.price.toLocaleString('ko-KR')+'원';
+    return'<div class="chart-row"><div class="chart-name" title="'+p.name+'">'+p.name+'</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:'+pct+'%;background:'+p.color+'"></div><span class="chart-price-lbl">'+lbl+'</span></div></div>';
+  }).join('');
+  el.innerHTML=rows;
+}
 
 const PROXIES=[url=>`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`];
 function rssUrl(q){return`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=ko&gl=KR&ceid=KR:ko`;}
