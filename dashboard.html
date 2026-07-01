@@ -498,9 +498,7 @@ async function fetchDanawaSearch(query){
 async function fetchNaver(query){
   if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return null;
   const key='np:'+query;if(key in priceCache)return priceCache[key];
-  // API 쿼리에 렌탈 제외어 직접 포함 (범위 좁게)
-  var naverQ=query+' -렌탈 -렌털 -렌트';
-  const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(naverQ)+'&sort=asc&display=20';
+  const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(query)+'&sort=asc&display=20';
   const naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
   // 여러 프록시를 동시에 시도 — 헤더 포워딩 지원 프록시 우선
   var tryProxy=function(proxyUrl,parseJson){
@@ -608,7 +606,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v7_norental';
+const LC_VER='v8_norental';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
