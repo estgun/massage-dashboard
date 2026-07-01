@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>안마의자 대시보드</title>
+<script>
+// 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
+(function(){var V='6';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+</script>
 <style>
 :root { color-scheme: light; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -494,9 +498,9 @@ async function fetchDanawaSearch(query){
 async function fetchNaver(query){
   if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return null;
   const key='np:'+query;if(key in priceCache)return priceCache[key];
-  // API 쿼리에 렌탈 제외어 직접 포함
-  var naverQ=query+' -렌탈 -렌털 -임대 -구독 -리스';
-  const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(naverQ)+'&sort=asc&display=10';
+  // API 쿼리에 렌탈 제외어 직접 포함 (범위 좁게)
+  var naverQ=query+' -렌탈 -렌털 -렌트';
+  const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(naverQ)+'&sort=asc&display=20';
   const naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
   // 여러 프록시를 동시에 시도 — 헤더 포워딩 지원 프록시 우선
   var tryProxy=function(proxyUrl,parseJson){
@@ -521,13 +525,13 @@ async function fetchNaver(query){
   ]).catch(function(){return null;});
   if(!data){priceCache[key]=null;return null;}
   try{
-    // 렌탈/저가 상품 이중 필터 (키워드 + 최저가 30만원 미만 제외)
-    var RENTAL_KW=['렌탈','렌털','임대','lease','rental','월납','구독','리스'];
+    // 렌탈 상품 필터 (명확한 렌탈 키워드 + 월납부금 수준 가격 제외)
+    var RENTAL_KW=['렌탈','렌털','렌트','rental','lease','임대','월납','월정액','정기결제'];
     var items=(data.items||[]).filter(function(it){
       var t=(it.title||'').replace(/<[^>]*>/g,'').toLowerCase();
       var mn=(it.mallName||'').toLowerCase();
       var hasRentalKw=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
-      var tooChap=parseInt(it.lprice||'0')<300000;
+      var tooChap=parseInt(it.lprice||'0')<200000;
       return !hasRentalKw&&!tooChap;
     });
     var item=items[0];
@@ -604,7 +608,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v5_norental';
+const LC_VER='v7_norental';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
