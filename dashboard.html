@@ -612,32 +612,32 @@ async function fetchNaver(query,modelKey){
   }catch(e){return null;}
   return priceCache[key];
 }
-const SRC_COLOR={'다나와':'#1d4ed8','네이버':'#05944f','참고가':'#9ca3af'};
+const SRC_COLOR={'다나와':'#005bac','네이버':'#03c75a','참고가':'#9ca3af'};
 const MALL_COLOR={
-  'CJ온스타일':'#7c3aed',
-  '쿠팡':'#0284c7',
-  '롯데홈쇼핑':'#dc2626',
-  '롯데ON':'#9ca3af',
-  '하이마트':'#9ca3af',
-  'G마켓':'#16a34a',
-  '현대Hmall':'#9ca3af',
-  '이마트몰':'#eab308',
-  'SSG.COM':'#eab308',
-  '신세계라이브쇼핑':'#b91c1c',
-  '쇼핑엔티':'#0891b2',
-  '삼성 진월효천':'#1d4ed8',
-  '믿고사는샵':'#6d28d9',
-  '리쏘':'#92400e',
-  '11번가':'#ea580c',
-  '코웨이몰':'#0d9488',
-  '쿠쿠몰':'#d97706',
-  '신세계몰':'#7f1d1d',
-  '비욘드릴렉스몰':'#1e40af',
+  'CJ온스타일':'#e40050',      // CJ 핑크레드
+  '쿠팡':'#006cff',            // 쿠팡 찐파랑
+  '롯데홈쇼핑':'#e60012',      // 롯데 레드
+  '롯데ON':'#ff6200',          // 롯데ON 오렌지 (홈쇼핑과 구분)
+  '하이마트':'#737373',        // 하이마트 미디엄그레이
+  'G마켓':'#ff7300',           // G마켓 오렌지
+  '현대Hmall':'#4a4a4a',       // 현대 다크그레이 (하이마트보다 진하게)
+  '이마트몰':'#f5c400',        // 이마트 노랑
+  'SSG.COM':'#ff4068',         // SSG닷컴 핑크레드 (이마트와 구분)
+  '신세계라이브쇼핑':'#8c1a28',// 신세계 와인레드
+  '쇼핑엔티':'#0891b2',        // 쇼핑엔티 사이언블루
+  '삼성 진월효천':'#1428a0',   // 삼성 네이비블루
+  '믿고사는샵':'#6d28d9',      // 퍼플
+  '리쏘':'#92400e',            // 브라운
+  '11번가':'#ff3000',          // 11번가 브라이트레드
+  '코웨이몰':'#0d9488',        // 코웨이 틸
+  '쿠쿠몰':'#0052a3',          // 쿠쿠 블루
+  '신세계몰':'#6b0f1a',        // 신세계몰 다크와인 (라이브보다 진하게)
+  '비욘드릴렉스몰':'#1e40af',  // 비욘드릴렉스 네이비
   '비욘드릴렉스':'#1e40af',
   'VIBETHERM':'#1e40af',
-  '오늘의집':'#38bdf8',
+  '오늘의집':'#38bdf8',        // 오늘의집 하늘
 };
-const MALL_LIGHT_BG=new Set(['#eab308','#38bdf8']);
+const MALL_LIGHT_BG=new Set(['#f5c400','#38bdf8']);
 function makeBadge(label,bg){
   const txtColor=MALL_LIGHT_BG.has(bg)?'#1a1a2e':'white';
   return`<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;background:${bg};color:${txtColor};white-space:nowrap;vertical-align:middle">${label}</span>`;
@@ -697,7 +697,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v23_pcode_fix';
+const LC_VER='v24_badge_colors';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
