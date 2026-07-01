@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='10';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='11';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -500,7 +500,7 @@ async function fetchDanawaSearch(query){
 async function fetchNaver(query){
   if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return null;
   const key='np:'+query;if(key in priceCache)return priceCache[key];
-  const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(query)+'&sort=asc&display=100';
+  const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(query)+'&sort=asc&display=100&exclude=rental';
   const naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
   // 헤더 포워딩 지원 프록시 우선 시도
   var tryProxy=function(proxyUrl,parseJson){
@@ -549,7 +549,9 @@ async function fetchNaver(query){
     var item=items[0];
     if(item&&item.lprice){
       var mallName=(item.mallName||'네이버').replace(/<[^>]*>/g,'');
-      priceCache[key]={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(query)+'&sort=price_asc'};
+      var itemTitle=(item.title||'').replace(/<[^>]*>/g,'').toLowerCase();
+      var isRefurb=itemTitle.indexOf('리퍼')>-1||itemTitle.indexOf('리퍼브')>-1||itemTitle.indexOf('refurb')>-1;
+      priceCache[key]={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(query)+'&sort=price_asc',refurb:isRefurb};
     } else {return null;}
   }catch(e){return null;}
   return priceCache[key];
@@ -600,6 +602,7 @@ var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   return '<div class="price-row">'
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
     +'<a class="price-ref-link '+cls+'" href="'+result.href+'" target="_blank">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
+    +(result.refurb?'<span style="font-size:9px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:2px;">리퍼</span>':'')
     +(showTag?'<span class="price-best-tag">최저</span>':'')
     +'</div>';
 };
@@ -620,7 +623,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v15_fallback';
+const LC_VER='v16_excluderental';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
