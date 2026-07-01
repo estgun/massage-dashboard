@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='8';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='9';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -524,18 +524,22 @@ async function fetchNaver(query){
   ]).catch(function(){return null;});
   if(!data)return null;
   try{
-    var RENTAL_KW=['렌탈','렌털','렌트','rental','lease','임대','월납','월정액','정기결제'];
+    // 렌탈/구독 키워드 — "렌탈" 없이도 구독·이용권·약정 등으로 표기하는 경우 포함
+    var RENTAL_KW=['렌탈','렌털','렌트','rental','lease','임대','월납','월정액','정기결제',
+                   '구독','이용권','이용료','약정','월이용','월구독','구독형','케어서비스',
+                   '할부개념','월비용','월사용','사용권','이용가'];
     // 용품/악세서리 키워드 — 전용 시트/커버/쿠션/매트 등 안마의자 부속품 제외
     var ACCESSORY_KW=['전용시트','전용커버','전용쿠션','전용매트','호환시트','호환쿠션','시트커버','쿠션커버','전용등받이','패드커버'];
     var items=(data.items||[]).filter(function(it){
       var t=(it.title||'').replace(/<[^>]*>/g,'').replace(/\s/g,'').toLowerCase();
-      var mn=(it.mallName||'').toLowerCase();
+      var mn=(it.mallName||'').replace(/\s/g,'').toLowerCase();
       var price=parseInt(it.lprice||'0');
       var hasRental=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
       var hasAccessory=ACCESSORY_KW.some(function(kw){return t.indexOf(kw.replace(/\s/g,''))>-1;});
       // 전용+용품 조합도 필터 (예: "전용 시트", "전용 커버")
       var hasAccessory2=(t.indexOf('전용')>-1&&(t.indexOf('시트')>-1||t.indexOf('커버')>-1||t.indexOf('쿠션')>-1||t.indexOf('매트')>-1));
-      return !hasRental&&!hasAccessory&&!hasAccessory2&&price>=200000;
+      // 가격 500,000 미만은 월 이용료일 가능성 높음 — 안마의자 최저 구매가 기준
+      return !hasRental&&!hasAccessory&&!hasAccessory2&&price>=500000;
     });
     var item=items[0];
     if(item&&item.lprice){
@@ -611,7 +615,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v13_proxy5';
+const LC_VER='v14_rentalfix';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
