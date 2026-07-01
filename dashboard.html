@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='13';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='14';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -436,9 +436,13 @@ function extractDanawaInfo(html){
     img=`https://images.weserv.nl/?url=${encodeURIComponent(raw)}&w=96&h=96&fit=contain&output=jpg`;
   }
   let price=null;
-  const m1=html.match(/최저가\s+([0-9,]{5,})원/);if(m1)price=m1[1]+'원';
-  if(!price){const m2=html.match(/<strong>([0-9,]{5,})<\/strong>\s*원/);if(m2)price=m2[1]+'원';}
-  if(!price){const m3=html.match(/"lowPrice"\s*:\s*"?([0-9]{5,})"?/);if(m3)price=Number(m3[1]).toLocaleString('ko-KR')+'원';}
+  // og:description 메타 태그에서 직접 추출 (가장 안정적)
+  const m0=html.match(/content="최저가\s+([\d,]{5,})원/);if(m0)price=m0[1]+'원';
+  if(!price){const m1=html.match(/최저가\s+([\d,]{5,})원/);if(m1)price=m1[1]+'원';}
+  if(!price){const m2=html.match(/<strong>([\d,]{5,})<\/strong>\s*원/);if(m2)price=m2[1]+'원';}
+  if(!price){const m3=html.match(/"lowPrice"\s*:\s*"?([\d]{5,})"?/);if(m3)price=Number(m3[1]).toLocaleString('ko-KR')+'원';}
+  // 최저가 추가 패턴: "5,608,180 원" 형태
+  if(!price){const m4=html.match(/([\d,]{6,})\s*원[\s\S]{0,30}(?:무료배송|쿠팡|최저)/);if(m4)price=m4[1]+'원';}
   if(!price)return img?{price:null,mall:null,img}:null;
   let mall=null;
   const cmpny1=html.match(/cmpny_info[^>]+alt="([^"]{2,20})"/);
@@ -657,7 +661,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v18_types';
+const LC_VER='v19_parsefix';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
