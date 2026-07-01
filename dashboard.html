@@ -97,8 +97,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .price-divider { color:#e5e7eb; font-size:14px; font-weight:300; }
 .price-win-d { font-weight:800; color:#1d4ed8; }
 .price-win-n { font-weight:800; color:#15803d; }
-.price-win-coupang { font-weight:800; color:#ee4d2d; }
+.price-win-coupang { font-weight:800; color:#0284c7; }
 .price-lose { opacity:0.38; font-size:11px; text-decoration:line-through; }
+/* 가격 비교 차트 */
+#price-chart-wrap { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+#price-chart-box { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; min-width:240px; max-width:380px; flex-shrink:0; }
+.chart-head { font-size:11px; font-weight:700; color:#6b7280; margin-bottom:10px; letter-spacing:0.3px; }
+.chart-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.chart-name { font-size:10px; font-weight:700; color:#374151; width:70px; flex-shrink:0; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chart-bar-wrap { flex:1; display:flex; align-items:center; gap:6px; min-width:0; }
+.chart-bar { height:14px; border-radius:3px; min-width:3px; transition:width 0.5s ease; }
+.chart-price-lbl { font-size:9px; color:#6b7280; white-space:nowrap; }
 .price-best-tag { font-size:9px; background:#f59e0b; color:#fff; padding:2px 7px; border-radius:4px; font-weight:900; flex-shrink:0; letter-spacing:0.3px; box-shadow:0 1px 4px rgba(245,158,11,0.5); animation:turnSignal 0.7s ease-in-out infinite; }
 @keyframes pricePulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 @keyframes turnSignal { 0%,45%{opacity:1;box-shadow:0 1px 8px rgba(245,158,11,0.9);} 55%,100%{opacity:0.15;box-shadow:none;} }
@@ -502,7 +511,7 @@ async function fetchDanawaSearch(query){
   }catch(e){return null;}
   return priceCache[key];
 }
-async function fetchNaver(query){
+async function fetchNaver(query,modelKey){
   if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return null;
   const key='np:'+query;if(key in priceCache)return priceCache[key];
   const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(query)+'&sort=asc&display=100&exclude=rental';
@@ -552,6 +561,14 @@ async function fetchNaver(query){
       var isSoldOut=t.indexOf('품절')>-1||t.indexOf('soldout')>-1||t.indexOf('판매중지')>-1||t.indexOf('단종')>-1;
       return {it:it,price:price,hasRental:hasRental,hasAccessory:hasAccessory||hasAccessory2,refurbType:refurbType,isSoldOut:isSoldOut};
     });
+    // 모델명 검증: 타이틀에 모델 키워드 없는 결과 제거 (비욘드릴렉스 오르카→키란 오링크 방지)
+    if(modelKey){
+      var mkLower=modelKey.replace(/\s/g,'').toLowerCase();
+      allItems=allItems.filter(function(x){
+        var t=(x.it.title||'').replace(/<[^>]*>/g,'').replace(/\s/g,'').toLowerCase();
+        return t.indexOf(mkLower)>-1;
+      });
+    }
     // 정상 제품만 필터 (렌탈/용품/리퍼·중고·전시/품절 제외)
     var normalItems=allItems.filter(function(x){return !x.hasRental&&!x.hasAccessory&&!x.refurbType&&!x.isSoldOut;});
     // 1단계: 500,000 이상
@@ -563,13 +580,26 @@ async function fetchNaver(query){
     // 리퍼·중고·전시 최저가 (렌탈/용품/품절 제외, 각 타입별 최저가)
     var secItems=allItems.filter(function(x){return !x.hasRental&&!x.hasAccessory&&!x.isSoldOut&&x.refurbType&&x.price>=100000;});
     var item=items[0];
+    var itemIsSec=false;
+    // 4단계 fallback: 정상 제품 없으면 리퍼/중고/전시 최저가를 주 가격으로 표시 (단종·구형 모델 대응)
+    if(!item&&secItems.length>0){
+      var cheapSec=secItems.reduce(function(a,b){return a.price<b.price?a:b;});
+      item=cheapSec.it;
+      itemIsSec=true;
+    }
     if(item&&item.lprice){
       var mallName=(item.mallName||'네이버').replace(/<[^>]*>/g,'');
       var result={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(query)+'&sort=price_asc'};
-      // 리퍼·중고·전시 최저가 별도 첨부 (타입별 최저가 하나씩)
-      if(secItems.length>0){
+      // 주 가격이 리퍼/중고/전시인 경우 타입 표시
+      if(itemIsSec){
+        var primInfo=allItems.find(function(x){return x.it===item;});
+        if(primInfo) result.primaryType=primInfo.refurbType;
+      }
+      // 나머지 리퍼·중고·전시 최저가 별도 첨부 (타입별 최저가 하나씩, 주 가격 제외)
+      var secRest=itemIsSec?secItems.filter(function(x){return x.it!==item;}):secItems;
+      if(secRest.length>0){
         var secByType={};
-        secItems.forEach(function(x){
+        secRest.forEach(function(x){
           if(!secByType[x.refurbType]||x.price<secByType[x.refurbType].price) secByType[x.refurbType]=x;
         });
         result.secPrices=Object.keys(secByType).map(function(type){
@@ -585,12 +615,12 @@ async function fetchNaver(query){
 const SRC_COLOR={'다나와':'#1d4ed8','네이버':'#05944f','참고가':'#9ca3af'};
 const MALL_COLOR={
   'CJ온스타일':'#7c3aed',
-  '쿠팡':'#ee4d2d',
+  '쿠팡':'#0284c7',
   '롯데홈쇼핑':'#dc2626',
-  '롯데ON':'#be123c',
-  '하이마트':'#0369a1',
+  '롯데ON':'#9ca3af',
+  '하이마트':'#9ca3af',
   'G마켓':'#16a34a',
-  '현대Hmall':'#1e3a8a',
+  '현대Hmall':'#9ca3af',
   '이마트몰':'#eab308',
   'SSG.COM':'#eab308',
   '신세계라이브쇼핑':'#b91c1c',
@@ -605,8 +635,9 @@ const MALL_COLOR={
   '비욘드릴렉스몰':'#1e40af',
   '비욘드릴렉스':'#1e40af',
   'VIBETHERM':'#1e40af',
+  '오늘의집':'#38bdf8',
 };
-const MALL_LIGHT_BG=new Set(['#eab308']);
+const MALL_LIGHT_BG=new Set(['#eab308','#38bdf8']);
 function makeBadge(label,bg){
   const txtColor=MALL_LIGHT_BG.has(bg)?'#1a1a2e':'white';
   return`<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;background:${bg};color:${txtColor};white-space:nowrap;vertical-align:middle">${label}</span>`;
@@ -625,9 +656,13 @@ var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   var mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
   var bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
   var winStyle=isWin?'color:'+bg+';font-weight:800':'';
+  var TYPE_STYLE={'리퍼':{bg:'#fef3c7',color:'#92400e'},'중고':{bg:'#e0e7ff',color:'#3730a3'},'전시':{bg:'#d1fae5',color:'#065f46'}};
+  var primBadge='';
+  if(result.primaryType){var pts=TYPE_STYLE[result.primaryType]||{bg:'#f3f4f6',color:'#374151'};primBadge='<span style="font-size:9px;background:'+pts.bg+';color:'+pts.color+';padding:2px 6px;border-radius:4px;font-weight:700;margin-left:2px;">'+result.primaryType+'</span>';}
   var html='<div class="price-row">'
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
     +'<a class="price-ref-link'+(isWin?'':' price-lose')+'" href="'+result.href+'" target="_blank" style="'+winStyle+'">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
+    +primBadge
     +(showTag?'<span class="price-best-tag">최저</span>':'')
     +'</div>';
   // 리퍼·중고·전시 최저가 별도 줄
@@ -698,7 +733,7 @@ async function loadBrandPrices(brand){
       var m=models[i];
       if(m.price!=='문의 필요'){
         var pair=await Promise.all([
-          hasNaver?fetchNaver(m.full).catch(function(){return null;}):Promise.resolve(null),
+          hasNaver?fetchNaver(m.full,m.name).catch(function(){return null;}):Promise.resolve(null),
           (m.pcode?fetchDanawa(m.pcode).then(function(r){return r||fetchDanawaSearch(m.full);}):fetchDanawaSearch(m.full)).catch(function(){return null;})
         ]);
         if(activeFetchBrand!==brand)return;
@@ -779,7 +814,7 @@ function renderPriceTable(brand){
     var yearBadge=m.year?'<span style="font-size:9px;background:#e0f2fe;color:#0369a1;border-radius:3px;padding:1px 5px;font-weight:700">'+m.year+'</span>':'';
     return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
   }).join('');
-  document.getElementById('price-compare-table').innerHTML=`<div class="plist">${rows}</div>`;
+  document.getElementById('price-compare-table').innerHTML=`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div>`;
   loadBrandPrices(brand);
 }
 function setPriceBrand(btn,brand){document.querySelectorAll('.pb-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderPriceTable(brand);}
