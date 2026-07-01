@@ -97,6 +97,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .price-divider { color:#e5e7eb; font-size:14px; font-weight:300; }
 .price-win-d { font-weight:800; color:#1d4ed8; }
 .price-win-n { font-weight:800; color:#15803d; }
+.price-win-coupang { font-weight:800; color:#ee4d2d; }
 .price-lose { opacity:0.38; font-size:11px; text-decoration:line-through; }
 .price-best-tag { font-size:9px; background:#f59e0b; color:#fff; padding:2px 7px; border-radius:4px; font-weight:900; flex-shrink:0; letter-spacing:0.3px; box-shadow:0 1px 4px rgba(245,158,11,0.5); animation:turnSignal 0.7s ease-in-out infinite; }
 @keyframes pricePulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
@@ -598,7 +599,7 @@ function setCellPrice(cellId,result){
 var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   var mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
   var bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
-  var cls=isWin?(srcLabel==='D'?'price-win-d':'price-win-n'):'price-lose';
+  var cls=isWin?(srcLabel==='D'?'price-win-d':mallName==='쿠팡'?'price-win-coupang':'price-win-n'):'price-lose';
   return '<div class="price-row">'
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
     +'<a class="price-ref-link '+cls+'" href="'+result.href+'" target="_blank">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
