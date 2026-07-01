@@ -618,7 +618,20 @@ const MALL_COLOR={
   '롯데ON':'#ff6200',          // 롯데ON 오렌지 (홈쇼핑과 구분)
   '하이마트':'#737373',        // 하이마트 미디엄그레이
   'G마켓':'#ff7300',           // G마켓 오렌지
-  '현대Hmall':'#4a4a4a',       // 현대 다크그레이 (하이마트보다 진하게)
+  '현대Hmall':'#4a4a4a',       // 현대 다크그레이
+  '현대백화점':'#4a4a4a',
+  '더현대닷컴':'#4a4a4a',
+  '더현대':'#4a4a4a',
+  'H.Point':'#4a4a4a',
+  '더현대Hi':'#737373',        // 하이마트 계열
+  '롯데하이마트':'#737373',
+  '롯데백화점':'#6b6b6b',
+  '롯데닷컴':'#6b6b6b',
+  '갤러리아':'#8b8b8b',
+  '갤러리아몰':'#8b8b8b',
+  'AK플라자':'#8b8b8b',
+  'AK몰':'#8b8b8b',
+  'NC백화점':'#9ca3af',
   '이마트몰':'#f5c400',        // 이마트 노랑
   'SSG.COM':'#ff4068',         // SSG닷컴 핑크레드 (이마트와 구분)
   '신세계라이브쇼핑':'#8c1a28',// 신세계 와인레드
@@ -644,7 +657,7 @@ function setCellPrice(cellId,result){
   const el=document.getElementById(cellId);if(!el)return;
   if(result?.price){
     const mallName=result.mall||(result.src==='다나와'?'다나와':result.src==='네이버'?'네이버':'참고가');
-    const bg=MALL_COLOR[mallName]||SRC_COLOR[result.src]||'#9ca3af';
+    const bg=MALL_COLOR[mallName]||(result.src==='다나와'?SRC_COLOR['다나와']:mallName==='네이버'?SRC_COLOR['네이버']:'#8b8b8b')||'#9ca3af';
     const badge=makeBadge(mallName,bg);
     el.innerHTML='<a class="price-ref-link" href="'+result.href+'" target="_blank">'+result.price+' '+badge+'</a>';
   }
@@ -652,7 +665,7 @@ function setCellPrice(cellId,result){
 }
 var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   var mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
-  var bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
+  var bg=MALL_COLOR[mallName]||(srcLabel==='D'?SRC_COLOR['다나와']:mallName==='네이버'?SRC_COLOR['네이버']:'#8b8b8b')||'#888';
   var winStyle=isWin?'color:'+bg+';font-weight:800':'';
   var TYPE_STYLE={'리퍼':{bg:'#fef3c7',color:'#92400e'},'중고':{bg:'#e0e7ff',color:'#3730a3'},'전시':{bg:'#d1fae5',color:'#065f46'}};
   var primBadge='';
