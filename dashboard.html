@@ -521,27 +521,22 @@ async function fetchNaver(query){
     p3.then(function(d){return d&&d.items?d:Promise.reject();}),
     p4.then(function(d){return d&&d.items?d:Promise.reject();}),
   ]).catch(function(){return null;});
-  if(!data){priceCache[key]=null;return null;}
+  if(!data)return null;
   try{
-    // 1차: 렌탈 키워드 필터
     var RENTAL_KW=['렌탈','렌털','렌트','rental','lease','임대','월납','월정액','정기결제'];
     var items=(data.items||[]).filter(function(it){
       var t=(it.title||'').replace(/<[^>]*>/g,'').toLowerCase();
       var mn=(it.mallName||'').toLowerCase();
-      return !RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
+      var price=parseInt(it.lprice||'0');
+      var hasKw=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
+      return !hasKw&&price>=300000;
     });
-    // 2차: 최고가 기준 이상치 제거 — 결과 중 가장 비싼 가격의 15% 미만이면 렌탈 월납부금으로 판단
-    if(items.length>=2){
-      var maxP=Math.max.apply(null,items.map(function(it){return parseInt(it.lprice||'0');}));
-      var floor=Math.max(200000,maxP*0.15);
-      items=items.filter(function(it){return parseInt(it.lprice||'0')>=floor;});
-    }
     var item=items[0];
     if(item&&item.lprice){
       var mallName=(item.mallName||'네이버').replace(/<[^>]*>/g,'');
       priceCache[key]={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(query)+'&sort=price_asc'};
-    } else {priceCache[key]=null;}
-  }catch(e){priceCache[key]=null;}
+    } else {return null;}
+  }catch(e){return null;}
   return priceCache[key];
 }
 const SRC_COLOR={'다나와':'#1d4ed8','네이버':'#05944f','참고가':'#9ca3af'};
@@ -610,7 +605,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v10_norental';
+const LC_VER='v11_norental';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
