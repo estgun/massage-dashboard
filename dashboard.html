@@ -108,9 +108,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .chart-bar-wrap { flex:1; display:flex; align-items:center; gap:6px; min-width:0; }
 .chart-bar { height:14px; border-radius:3px; min-width:3px; transition:width 0.5s ease; }
 .chart-price-lbl { font-size:9px; color:#6b7280; white-space:nowrap; }
-.price-best-tag { font-size:9px; background:#f59e0b; color:#fff; padding:2px 7px; border-radius:4px; font-weight:900; flex-shrink:0; letter-spacing:0.3px; box-shadow:0 1px 4px rgba(245,158,11,0.5); animation:turnSignal 0.7s ease-in-out infinite; }
 @keyframes pricePulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-@keyframes turnSignal { 0%,45%{opacity:1;box-shadow:0 1px 8px rgba(245,158,11,0.9);} 55%,100%{opacity:0.15;box-shadow:none;} }
 .price-refresh-btn { padding: 3px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; cursor: pointer; }
 .price-refresh-btn:hover { background: #ede9fe; }
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
@@ -614,7 +612,7 @@ async function fetchNaver(query,modelKey){
 }
 const SRC_COLOR={'다나와':'#005bac','네이버':'#03c75a','참고가':'#9ca3af'};
 const MALL_COLOR={
-  'CJ온스타일':'#e40050',      // CJ 핑크레드
+  'CJ온스타일':'#7c3aed',      // CJ온스타일 보라
   '쿠팡':'#006cff',            // 쿠팡 찐파랑
   '롯데홈쇼핑':'#e60012',      // 롯데 레드
   '롯데ON':'#ff6200',          // 롯데ON 오렌지 (홈쇼핑과 구분)
@@ -663,7 +661,6 @@ var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
     +'<a class="price-ref-link'+(isWin?'':' price-lose')+'" href="'+result.href+'" target="_blank" style="'+winStyle+'">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
     +primBadge
-    +(showTag?'<span class="price-best-tag">최저</span>':'')
     +'</div>';
   // 리퍼·중고·전시 최저가 별도 줄
   var TYPE_STYLE={'리퍼':{bg:'#fef3c7',color:'#92400e'},'중고':{bg:'#e0e7ff',color:'#3730a3'},'전시':{bg:'#d1fae5',color:'#065f46'}};
