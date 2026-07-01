@@ -91,9 +91,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .price-src-d { background:#dbeafe; color:#1d4ed8; }
 .price-src-n { background:#dcfce7; color:#15803d; }
 .price-divider { color:#e5e7eb; font-size:14px; font-weight:300; }
-.price-win { font-weight:800; }
-.price-lose { opacity:0.45; font-size:11px; }
-.price-best-tag { font-size:8px; background:#fef08a; color:#854d0e; padding:1px 4px; border-radius:3px; font-weight:800; flex-shrink:0; }
+.price-win { font-weight:800; color:#059669; }
+.price-lose { opacity:0.38; font-size:11px; text-decoration:line-through; }
+.price-best-tag { font-size:8px; background:#059669; color:white; padding:1px 5px; border-radius:3px; font-weight:800; flex-shrink:0; letter-spacing:0.2px; }
 @keyframes pricePulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 .price-refresh-btn { padding: 3px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; cursor: pointer; }
 .price-refresh-btn:hover { background: #ede9fe; }
@@ -129,14 +129,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
     <div class="card full" style="width:fit-content;min-width:0">
       <div class="section-title">🏷️ 브랜드별 주요 모델 최저가 비교
         <button class="price-refresh-btn" onclick="refreshPrices()">↻ 가격 새로고침</button>
-        <button class="price-refresh-btn" style="background:#d1fae5;color:#065f46;border-color:#a7f3d0" onclick="document.getElementById('naver-api-setup').style.display=document.getElementById('naver-api-setup').style.display==='none'?'block':'none'">🟢 네이버 API</button>
+        <button id="naver-toggle-btn" class="price-refresh-btn" onclick="toggleNaverPanel()">🔴 네이버 API 미설정</button>
       </div>
       <div id="naver-api-setup" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:12px">
-        <div style="font-weight:700;color:#065f46;margin-bottom:8px">🟢 네이버 쇼핑 Open API 연동</div>
+        <div style="font-weight:700;color:#065f46;margin-bottom:6px">🟢 네이버 쇼핑 Open API 연동</div>
+        <div style="color:#374151;font-size:11px;margin-bottom:8px">네이버 개발자센터에서 발급받은 키를 입력하면 네이버 최저가(N)도 함께 표시됩니다.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <input id="naver-id" type="text" placeholder="Client ID" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;width:180px">
-          <input id="naver-secret" type="text" placeholder="Client Secret" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;width:180px">
-            <button onclick="saveNaverKey()" style="padding:5px 14px;background:#059669;color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">저장 & 새로고침</button>
+          <input id="naver-secret" type="password" placeholder="Client Secret" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;width:180px">
+          <button onclick="saveNaverKey()" style="padding:5px 14px;background:#059669;color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">저장 & 조회</button>
           <button onclick="clearNaverKey()" style="padding:5px 10px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">삭제</button>
         </div>
       </div>
@@ -307,7 +308,6 @@ const PRICE_MODELS = {
     {name:'B3',full:'바이브썸 B3 BT-HL-6610BR',sub:'무선충전 컴팩트',pcode:'104573075',price:'미등록',year:'2026'},
   ],
 };
-// 다나와 제품 이미지 URL 하드코딩 (og:image에서 수집)
 const DANAWA_IMGS={
   '31981256':'https://img.danuri.io/catalog-image/256/981/031/b210676ce1974d17b4302f84ed76076b.jpg',
   '9741543':'https://img.danuri.io/catalog-image/543/741/009/4e9c2249a46c4a0b90430184be131189.jpg',
@@ -378,7 +378,6 @@ const DANAWA_IMGS={
 function danImgSrc(pcode){
   const raw=DANAWA_IMGS[pcode];
   if(!raw)return null;
-  // 직접 URL 시도, 실패시 corsproxy 통해 로드
   return raw;
 }
 const CHANNELS=[
@@ -414,8 +413,14 @@ let NAVER_CLIENT_ID=localStorage.getItem('naver_id')||'',NAVER_CLIENT_SECRET=loc
 const priceCache={};let activeFetchBrand=null;
 function toNum(s){if(!s)return Infinity;return parseInt(String(s).replace(/[^0-9]/g,''))||Infinity;}
 function fmtPrice(n){return Number(n).toLocaleString('ko-KR')+'원';}
+// AbortSignal.timeout 대신 Promise.race+setTimeout (모든 브라우저 호환)
+var tFetch=function(url,opts,ms){
+  return Promise.race([
+    fetch(url,opts||{}),
+    new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},ms||6000);})
+  ]);
+};
 function extractDanawaInfo(html){
-  // 이미지: danuri.io URL 탐색 → images.weserv.nl 프록시로 감싸서 핫링크/CORS 우회
   let img=null;
   const imgM=html.match(/(?:https?:\/\/|\/\/)img\.danuri\.io\/catalog-image\/[0-9a-zA-Z\/\-_]+\.(?:jpg|jpeg|png|webp)/i);
   if(imgM){
@@ -447,18 +452,21 @@ function extractDanawaInfo(html){
 }
 async function proxyGet(url){
   const enc=encodeURIComponent(url);
-  // 3개 프록시 동시 경쟁 — 가장 먼저 응답하는 것 사용
-  const allorigins=fetch('https://api.allorigins.win/get?url='+enc,{signal:AbortSignal.timeout(8000)})
-    .then(r=>r.ok?r.json():null).then(j=>j?.contents&&j.contents.length>500?j.contents:null).catch(()=>null);
-  const codetabs=fetch('https://api.codetabs.com/v1/proxy?quest='+enc,{signal:AbortSignal.timeout(8000)})
+  // 4개 프록시 동시 경쟁 — Promise.race+setTimeout으로 확실한 타임아웃
+  const allorigins=tFetch('https://api.allorigins.win/get?url='+enc,{},7000)
+    .then(r=>r.ok?r.json():null).then(j=>j&&j.contents&&j.contents.length>500?j.contents:null).catch(()=>null);
+  const codetabs=tFetch('https://api.codetabs.com/v1/proxy?quest='+enc,{},7000)
     .then(r=>r.ok?r.text():null).then(t=>t&&t.length>500?t:null).catch(()=>null);
-  const corsproxy=fetch('https://corsproxy.io/?'+enc,{signal:AbortSignal.timeout(8000)})
+  const corsproxy=tFetch('https://corsproxy.io/?url='+enc,{},7000)
+    .then(r=>r.ok?r.text():null).then(t=>t&&t.length>500?t:null).catch(()=>null);
+  const thingproxy=tFetch('https://thingproxy.freeboard.io/fetch/'+url,{},7000)
     .then(r=>r.ok?r.text():null).then(t=>t&&t.length>500?t:null).catch(()=>null);
   const result=await Promise.any([
-    allorigins.then(r=>r||Promise.reject()),
-    codetabs.then(r=>r||Promise.reject()),
-    corsproxy.then(r=>r||Promise.reject()),
-  ]).catch(()=>null);
+    allorigins.then(function(r){return r||Promise.reject();}),
+    codetabs.then(function(r){return r||Promise.reject();}),
+    corsproxy.then(function(r){return r||Promise.reject();}),
+    thingproxy.then(function(r){return r||Promise.reject();}),
+  ]).catch(function(){return null;});
   if(!result)throw new Error('proxy fail');
   return result;
 }
@@ -470,7 +478,7 @@ async function fetchDanawa(pcode){
     const href=`https://prod.danawa.com/info/?pcode=${pcode}`;
     priceCache[key]=info?.price?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href}:null;
     if(info?.img&&!priceCache[key])priceCache['img:'+pcode]=info.img;
-  }catch(e){return null;} // 네트워크 오류 시 캐시 저장 안 함 (재시도 가능)
+  }catch(e){return null;}
   return priceCache[key];
 }
 async function fetchDanawaSearch(query){
@@ -480,29 +488,54 @@ async function fetchDanawaSearch(query){
     const html=await proxyGet(href);
     const info=extractDanawaInfo(html);
     priceCache[key]=info?.price?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href}:null;
-  }catch(e){return null;} // 네트워크 오류 시 캐시 저장 안 함
+  }catch(e){return null;}
   return priceCache[key];
 }
 async function fetchNaver(query){
   if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return null;
   const key='np:'+query;if(key in priceCache)return priceCache[key];
-  const naverUrl=`https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&sort=asc&display=3`;
+  // API 쿼리에 렌탈 제외어 직접 포함
+  var naverQ=query+' -렌탈 -렌털 -임대 -구독 -리스';
+  const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(naverQ)+'&sort=asc&display=10';
   const naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
-  // 브라우저에서는 직접 호출 불가 (항상 CORS 실패) → 즉시 프록시 경쟁
-  const p1=fetch('https://corsproxy.io/?'+encodeURIComponent(naverUrl),{headers:naverHdrs,signal:AbortSignal.timeout(6000)})
-    .then(r=>r.ok?r.json():null).catch(()=>null);
-  const p2=fetch('https://api.allorigins.win/get?url='+encodeURIComponent(naverUrl),{headers:naverHdrs,signal:AbortSignal.timeout(6000)})
-    .then(r=>r.ok?r.json():null).then(j=>j?.contents?JSON.parse(j.contents):null).catch(()=>null);
-  const data=await Promise.any([
-    p1.then(d=>d?.items?d:Promise.reject()),
-    p2.then(d=>d?.items?d:Promise.reject()),
-  ]).catch(()=>null);
-  if(!data)return null; // 모든 fetch 실패 시 캐시 저장 안 함
+  // 여러 프록시를 동시에 시도 — 헤더 포워딩 지원 프록시 우선
+  var tryProxy=function(proxyUrl,parseJson){
+    return tFetch(proxyUrl,{headers:naverHdrs},8000)
+      .then(function(r){return r.ok?r.json():Promise.reject();})
+      .then(function(j){return parseJson?parseJson(j):j;})
+      .catch(function(){return null;});
+  };
+  var p1=tryProxy('https://corsproxy.io/?url='+encodeURIComponent(naverUrl),null);
+  var p2=tryProxy('https://corsproxy.io/?'+encodeURIComponent(naverUrl),null); // alt format
+  var p3=tFetch('https://api.allorigins.win/get?url='+encodeURIComponent(naverUrl),{headers:naverHdrs},8000)
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(j){try{return j&&j.contents?JSON.parse(j.contents):null;}catch(e){return null;}})
+    .catch(function(){return null;});
+  var p4=tFetch('https://thingproxy.freeboard.io/fetch/'+naverUrl,{headers:naverHdrs},8000)
+    .then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var data=await Promise.any([
+    p1.then(function(d){return d&&d.items?d:Promise.reject();}),
+    p2.then(function(d){return d&&d.items?d:Promise.reject();}),
+    p3.then(function(d){return d&&d.items?d:Promise.reject();}),
+    p4.then(function(d){return d&&d.items?d:Promise.reject();}),
+  ]).catch(function(){return null;});
+  if(!data){priceCache[key]=null;return null;}
   try{
-    const item=data?.items?.[0];
-    if(item&&item.lprice){const mallName=(item.mallName||'네이버').replace(/<[^>]*>/g,'');priceCache[key]={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(query)}&sort=price_asc`};}
-    else priceCache[key]=null;
-  }catch(e){return null;}
+    // 렌탈/저가 상품 이중 필터 (키워드 + 최저가 30만원 미만 제외)
+    var RENTAL_KW=['렌탈','렌털','임대','lease','rental','월납','구독','리스'];
+    var items=(data.items||[]).filter(function(it){
+      var t=(it.title||'').replace(/<[^>]*>/g,'').toLowerCase();
+      var mn=(it.mallName||'').toLowerCase();
+      var hasRentalKw=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
+      var tooChap=parseInt(it.lprice||'0')<300000;
+      return !hasRentalKw&&!tooChap;
+    });
+    var item=items[0];
+    if(item&&item.lprice){
+      var mallName=(item.mallName||'네이버').replace(/<[^>]*>/g,'');
+      priceCache[key]={price:fmtPrice(item.lprice),src:'네이버',mall:mallName,img:item.image||null,href:item.link||'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(query)+'&sort=price_asc'};
+    } else {priceCache[key]=null;}
+  }catch(e){priceCache[key]=null;}
   return priceCache[key];
 }
 const SRC_COLOR={'다나와':'#1d4ed8','네이버':'#05944f','참고가':'#9ca3af'};
@@ -529,7 +562,6 @@ const MALL_COLOR={
   '비욘드릴렉스':'#1e40af',
   'VIBETHERM':'#1e40af',
 };
-// 밝은 배경색은 텍스트를 어둡게
 const MALL_LIGHT_BG=new Set(['#eab308']);
 function makeBadge(label,bg){
   const txtColor=MALL_LIGHT_BG.has(bg)?'#1a1a2e':'white';
@@ -545,34 +577,36 @@ function setCellPrice(cellId,result){
   }
   else{el.innerHTML='<span style="color:#d1d5db;font-size:11px">—</span>';}
 }
+var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
+  var mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
+  var bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
+  var cls=isWin?'price-win':'price-lose';
+  return '<div class="price-row">'
+    +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
+    +'<a class="price-ref-link '+cls+'" href="'+result.href+'" target="_blank">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
+    +(showTag?'<span class="price-best-tag">최저</span>':'')
+    +'</div>';
+};
 function setCellPriceDual(cellId,danawa,naver){
-  const el=document.getElementById(cellId);if(!el)return;
+  var el=document.getElementById(cellId);if(!el)return;
   if(!danawa?.price&&!naver?.price){el.innerHTML='<span style="color:#d1d5db;font-size:11px">—</span>';return;}
-  function makeBlock(result,srcClass,srcLabel,isWin,showTag){
-    const mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
-    const bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
-    const cls=isWin?'price-win':'price-lose';
-    return '<div class="price-row">'
-      +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
-      +'<a class="price-ref-link '+cls+'" href="'+result.href+'" target="_blank">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
-      +(showTag?'<span class="price-best-tag">최저</span>':'')
-      +'</div>';
-  }
   if(danawa?.price&&naver?.price){
-    const dWin=toNum(danawa.price)<=toNum(naver.price);
+    var dWin=toNum(danawa.price)<=toNum(naver.price);
     el.innerHTML='<div class="price-dual-row">'
-      +makeBlock(danawa,'price-src-d','D',dWin,dWin)
+      +makePriceBlock(danawa,'price-src-d','D',dWin,dWin)
       +'<span class="price-divider">|</span>'
-      +makeBlock(naver,'price-src-n','N',!dWin,!dWin)
+      +makePriceBlock(naver,'price-src-n','N',!dWin,!dWin)
       +'</div>';
   } else if(danawa?.price){
-    el.innerHTML=makeBlock(danawa,'price-src-d','D',true,false);
+    el.innerHTML=makePriceBlock(danawa,'price-src-d','D',true,false);
   } else {
-    el.innerHTML=makeBlock(naver,'price-src-n','N',true,false);
+    el.innerHTML=makePriceBlock(naver,'price-src-n','N',true,false);
   }
 }
-// localStorage 가격 캐시 (4시간 유효)
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
+const LC_VER='v5_norental';
+// 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
+(function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
   try{localStorage.setItem(LC_PFX+brand+'_'+i,JSON.stringify({danawa,naver,ts:Date.now()}));}catch(e){}
 }
@@ -592,32 +626,43 @@ async function loadBrandPrices(brand){
   activeFetchBrand=brand;
   const models=PRICE_MODELS[brand]||[];
   const hasNaver=!!(NAVER_CLIENT_ID&&NAVER_CLIENT_SECRET);
-  // 캐시 즉시 표시 (첫 조회 전 빠른 렌더)
   models.forEach((m,i)=>{
     if(m.price==='문의 필요')return;
     const c=loadPriceCache(brand,i);
     if(c)setCellPriceDual('pc-'+brand+'-'+i,c.danawa,c.naver);
   });
-  // 3개 워커 동시 처리 (rate limit 방지하면서 3배 빠름)
-  let idx=0;
-  async function worker(){
+  // 5개 워커 동시 처리
+  var idx=0;
+  var workerFn=async function(){
     while(idx<models.length){
       if(activeFetchBrand!==brand)return;
-      const i=idx++;
-      const m=models[i];
-      if(m.price==='문의 필요')continue;
-      const [naver,danawa]=await Promise.all([
-        hasNaver?fetchNaver(m.full).catch(()=>null):Promise.resolve(null),
-        (m.pcode?fetchDanawa(m.pcode):fetchDanawaSearch(m.full)).catch(()=>null)
-      ]);
-      if(activeFetchBrand!==brand)return;
-      const imgSrc=danawa?.img||(m.pcode?priceCache['img:'+m.pcode]:null)||naver?.img||null;
-      if(imgSrc){const imgEl=document.getElementById('img-'+brand+'-'+i);if(imgEl){imgEl.onerror=null;imgEl.src=imgSrc;}}
-      setCellPriceDual('pc-'+brand+'-'+i,danawa,naver);
-      if(danawa||naver)savePriceCache(brand,i,danawa,naver);
+      var i=idx++;
+      var m=models[i];
+      if(m.price!=='문의 필요'){
+        var pair=await Promise.all([
+          hasNaver?fetchNaver(m.full).catch(function(){return null;}):Promise.resolve(null),
+          (m.pcode?fetchDanawa(m.pcode):fetchDanawaSearch(m.full)).catch(function(){return null;})
+        ]);
+        if(activeFetchBrand!==brand)return;
+        var naver=pair[0],danawa=pair[1];
+        var imgSrc=danawa?.img||(m.pcode?priceCache['img:'+m.pcode]:null)||naver?.img||null;
+        if(imgSrc){var imgEl=document.getElementById('img-'+brand+'-'+i);if(imgEl){imgEl.onerror=null;imgEl.src=imgSrc;}}
+        setCellPriceDual('pc-'+brand+'-'+i,danawa,naver);
+        if(danawa||naver)savePriceCache(brand,i,danawa,naver);
+      }
     }
-  }
-  await Promise.all([worker(),worker(),worker()]);
+  };
+  // 25초 안전망: 아직 "조회중" 상태면 강제로 "—"로 변경
+  var cleanupTimer=setTimeout(function(){
+    models.forEach(function(m,i){
+      var el=document.getElementById('pc-'+brand+'-'+i);
+      if(el&&el.querySelector('.price-loading')){
+        el.innerHTML='<span style="color:#d1d5db;font-size:11px">—</span>';
+      }
+    });
+  },25000);
+  await Promise.all([workerFn(),workerFn(),workerFn(),workerFn(),workerFn()]);
+  clearTimeout(cleanupTimer);
 }
 function refreshPrices(){
   const btn=document.querySelector('.pb-btn.active');if(!btn)return;
@@ -626,13 +671,32 @@ function refreshPrices(){
   clearPriceCache(brand);
   renderPriceTable(brand);
 }
-function clearNaverKey(){localStorage.removeItem('naver_id');localStorage.removeItem('naver_secret');NAVER_CLIENT_ID='';NAVER_CLIENT_SECRET='';document.getElementById('naver-id').value='';document.getElementById('naver-secret').value='';}
+function updateNaverBtn(){
+  var btn=document.getElementById('naver-toggle-btn');
+  if(!btn)return;
+  if(NAVER_CLIENT_ID&&NAVER_CLIENT_SECRET){
+    btn.textContent='🟢 네이버 API 연결됨';
+    btn.style.background='#d1fae5';btn.style.color='#065f46';btn.style.borderColor='#6ee7b7';
+  } else {
+    btn.textContent='🔴 네이버 API 미설정 (클릭)';
+    btn.style.background='#fef2f2';btn.style.color='#dc2626';btn.style.borderColor='#fecaca';
+  }
+}
+function toggleNaverPanel(){
+  var p=document.getElementById('naver-api-setup');
+  p.style.display=p.style.display==='none'?'block':'none';
+  if(p.style.display==='block'&&NAVER_CLIENT_ID){document.getElementById('naver-id').value=NAVER_CLIENT_ID;document.getElementById('naver-secret').value=NAVER_CLIENT_SECRET;}
+}
+function clearNaverKey(){localStorage.removeItem('naver_id');localStorage.removeItem('naver_secret');NAVER_CLIENT_ID='';NAVER_CLIENT_SECRET='';document.getElementById('naver-id').value='';document.getElementById('naver-secret').value='';updateNaverBtn();}
 function saveNaverKey(){
-  NAVER_CLIENT_ID=document.getElementById('naver-id').value.trim();
-  NAVER_CLIENT_SECRET=document.getElementById('naver-secret').value.trim();
+  var id=document.getElementById('naver-id').value.trim();
+  var sec=document.getElementById('naver-secret').value.trim();
+  if(!id||!sec){alert('Client ID와 Client Secret을 모두 입력해주세요.');return;}
+  NAVER_CLIENT_ID=id;NAVER_CLIENT_SECRET=sec;
   localStorage.setItem('naver_id',NAVER_CLIENT_ID);
   localStorage.setItem('naver_secret',NAVER_CLIENT_SECRET);
   document.getElementById('naver-api-setup').style.display='none';
+  updateNaverBtn();
   refreshPrices();
 }
 function renderPriceTable(brand){
@@ -699,9 +763,11 @@ async function loadNews(query,elId){
 async function init(){
   const now=new Date();
   document.getElementById('ts-header').textContent=now.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})+' '+now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준';
-  // 저장된 네이버 키 입력창에 자동 채우기
-  if(NAVER_CLIENT_ID) document.getElementById('naver-id').value=NAVER_CLIENT_ID;
-  if(NAVER_CLIENT_SECRET) document.getElementById('naver-secret').value=NAVER_CLIENT_SECRET;
+  updateNaverBtn();
+  // 네이버 API 미설정 시 패널 자동 열기
+  if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET){
+    document.getElementById('naver-api-setup').style.display='block';
+  }
   renderPriceTable('파나소닉');
   await loadNews('쇼핑 유통 이커머스','shopping-news');
 }
