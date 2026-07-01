@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='7';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='8';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -501,36 +501,41 @@ async function fetchNaver(query){
   const key='np:'+query;if(key in priceCache)return priceCache[key];
   const naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(query)+'&sort=asc&display=100';
   const naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
-  // 여러 프록시를 동시에 시도 — 헤더 포워딩 지원 프록시 우선
+  // 헤더 포워딩 지원 프록시 우선 시도
   var tryProxy=function(proxyUrl,parseJson){
-    return tFetch(proxyUrl,{headers:naverHdrs},8000)
+    return tFetch(proxyUrl,{headers:naverHdrs},12000)
       .then(function(r){return r.ok?r.json():Promise.reject();})
       .then(function(j){return parseJson?parseJson(j):j;})
       .catch(function(){return null;});
   };
   var p1=tryProxy('https://corsproxy.io/?url='+encodeURIComponent(naverUrl),null);
-  var p2=tryProxy('https://corsproxy.io/?'+encodeURIComponent(naverUrl),null); // alt format
-  var p3=tFetch('https://api.allorigins.win/get?url='+encodeURIComponent(naverUrl),{headers:naverHdrs},8000)
-    .then(function(r){return r.ok?r.json():null;})
-    .then(function(j){try{return j&&j.contents?JSON.parse(j.contents):null;}catch(e){return null;}})
-    .catch(function(){return null;});
-  var p4=tFetch('https://thingproxy.freeboard.io/fetch/'+naverUrl,{headers:naverHdrs},8000)
+  var p2=tryProxy('https://corsproxy.io/?'+encodeURIComponent(naverUrl),null);
+  var p3=tryProxy('https://proxy.cors.sh/'+naverUrl,null); // 헤더 포워딩 보장
+  var p4=tFetch('https://api.allorigins.win/raw?url='+encodeURIComponent(naverUrl),{headers:naverHdrs},12000)
+    .then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var p5=tFetch('https://thingproxy.freeboard.io/fetch/'+naverUrl,{headers:naverHdrs},12000)
     .then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   var data=await Promise.any([
     p1.then(function(d){return d&&d.items?d:Promise.reject();}),
     p2.then(function(d){return d&&d.items?d:Promise.reject();}),
     p3.then(function(d){return d&&d.items?d:Promise.reject();}),
     p4.then(function(d){return d&&d.items?d:Promise.reject();}),
+    p5.then(function(d){return d&&d.items?d:Promise.reject();}),
   ]).catch(function(){return null;});
   if(!data)return null;
   try{
     var RENTAL_KW=['렌탈','렌털','렌트','rental','lease','임대','월납','월정액','정기결제'];
+    // 용품/악세서리 키워드 — 전용 시트/커버/쿠션/매트 등 안마의자 부속품 제외
+    var ACCESSORY_KW=['전용시트','전용커버','전용쿠션','전용매트','호환시트','호환쿠션','시트커버','쿠션커버','전용등받이','패드커버'];
     var items=(data.items||[]).filter(function(it){
-      var t=(it.title||'').replace(/<[^>]*>/g,'').toLowerCase();
+      var t=(it.title||'').replace(/<[^>]*>/g,'').replace(/\s/g,'').toLowerCase();
       var mn=(it.mallName||'').toLowerCase();
       var price=parseInt(it.lprice||'0');
-      var hasKw=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
-      return !hasKw&&price>=300000;
+      var hasRental=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
+      var hasAccessory=ACCESSORY_KW.some(function(kw){return t.indexOf(kw.replace(/\s/g,''))>-1;});
+      // 전용+용품 조합도 필터 (예: "전용 시트", "전용 커버")
+      var hasAccessory2=(t.indexOf('전용')>-1&&(t.indexOf('시트')>-1||t.indexOf('커버')>-1||t.indexOf('쿠션')>-1||t.indexOf('매트')>-1));
+      return !hasRental&&!hasAccessory&&!hasAccessory2&&price>=200000;
     });
     var item=items[0];
     if(item&&item.lprice){
@@ -606,7 +611,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v12_display100';
+const LC_VER='v13_proxy5';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
