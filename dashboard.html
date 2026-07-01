@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='15';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='16';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -540,14 +540,13 @@ async function fetchNaver(query){
       var t=(it.title||'').replace(/<[^>]*>/g,'').replace(/\s/g,'').toLowerCase();
       var mn=(it.mallName||'').replace(/\s/g,'').toLowerCase();
       var price=parseInt(it.lprice||'0');
-      var pType=parseInt(it.productType||'1'); // 1=신상품 2=중고
       var hasRental=RENTAL_KW.some(function(kw){return t.indexOf(kw)>-1||mn.indexOf(kw)>-1;});
       var hasAccessory=ACCESSORY_KW.some(function(kw){return t.indexOf(kw.replace(/\s/g,''))>-1;});
       var hasAccessory2=(t.indexOf('전용')>-1&&(t.indexOf('시트')>-1||t.indexOf('커버')>-1||t.indexOf('쿠션')>-1||t.indexOf('매트')>-1));
-      // 리퍼/중고/전시 탐지 — 키워드 + Naver productType=2(중고) 활용
+      // 리퍼/중고/전시 탐지 — 타이틀 키워드만 사용 (productType은 신뢰도 낮아 제외)
       var refurbType=
         (t.indexOf('리퍼')>-1||t.indexOf('리퍼브')>-1||t.indexOf('리퍼비시')>-1||t.indexOf('refurb')>-1||t.indexOf('개봉품')>-1||t.indexOf('개봉제품')>-1||t.indexOf('반품')>-1||t.indexOf('b급')>-1)?'리퍼'
-        :(t.indexOf('중고')>-1||t.indexOf('used')>-1||pType===2)?'중고'
+        :(t.indexOf('중고')>-1||t.indexOf('used')>-1)?'중고'
         :(t.indexOf('전시')>-1||t.indexOf('전시품')>-1||t.indexOf('전시상품')>-1||mn.indexOf('전시')>-1)?'전시'
         :null;
       var isSoldOut=t.indexOf('품절')>-1||t.indexOf('soldout')>-1||t.indexOf('판매중지')>-1||t.indexOf('단종')>-1;
@@ -625,10 +624,10 @@ function setCellPrice(cellId,result){
 var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   var mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
   var bg=MALL_COLOR[mallName]||SRC_COLOR[srcLabel==='D'?'다나와':'네이버']||'#888';
-  var cls=isWin?(srcLabel==='D'?'price-win-d':mallName==='쿠팡'?'price-win-coupang':'price-win-n'):'price-lose';
+  var winStyle=isWin?'color:'+bg+';font-weight:800':'';
   var html='<div class="price-row">'
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
-    +'<a class="price-ref-link '+cls+'" href="'+result.href+'" target="_blank">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
+    +'<a class="price-ref-link'+(isWin?'':' price-lose')+'" href="'+result.href+'" target="_blank" style="'+winStyle+'">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
     +(showTag?'<span class="price-best-tag">최저</span>':'')
     +'</div>';
   // 리퍼·중고·전시 최저가 별도 줄
@@ -663,7 +662,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v20_refurbdetect';
+const LC_VER='v21_mallcolor';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
@@ -700,7 +699,7 @@ async function loadBrandPrices(brand){
       if(m.price!=='문의 필요'){
         var pair=await Promise.all([
           hasNaver?fetchNaver(m.full).catch(function(){return null;}):Promise.resolve(null),
-          (m.pcode?fetchDanawa(m.pcode):fetchDanawaSearch(m.full)).catch(function(){return null;})
+          (m.pcode?fetchDanawa(m.pcode).then(function(r){return r||fetchDanawaSearch(m.full);}):fetchDanawaSearch(m.full)).catch(function(){return null;})
         ]);
         if(activeFetchBrand!==brand)return;
         var naver=pair[0],danawa=pair[1];
