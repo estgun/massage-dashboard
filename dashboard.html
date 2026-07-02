@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='18';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='20';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -124,6 +124,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .model-name { font-size: 13px; font-weight: 600; color: #1f2937; }
 .model-sub2 { font-size: 10px; color: #9ca3af; margin-top: 2px; }
 .model-btn { padding: 5px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #7c3aed; color: white; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
+/* 신규 발견 섹션 */
+.disc-section { margin-top: 14px; border-top: 1.5px dashed #fcd34d; padding-top: 12px; }
+.disc-header { font-size: 11px; font-weight: 700; color: #92400e; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.disc-count { background: #fef3c7; color: #92400e; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
+.disc-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: #fffbeb; border: 1px dashed #fcd34d; margin-bottom: 6px; transition: opacity 0.3s; }
+.disc-item:last-child { margin-bottom: 0; }
+.disc-badge { font-size: 15px; flex-shrink: 0; }
+.disc-info { flex: 1; min-width: 0; }
+.disc-name { font-weight: 700; font-size: 13px; color: #1f2937; text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.disc-name:hover { color: #7c3aed; text-decoration: underline; }
+.disc-full { font-size: 10px; color: #9ca3af; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.disc-price { font-size: 12px; font-weight: 700; color: #b45309; white-space: nowrap; flex-shrink: 0; }
+.disc-dismiss { background: none; border: 1px solid #e5e7eb; border-radius: 5px; padding: 3px 8px; font-size: 10px; color: #9ca3af; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.disc-dismiss:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
 </style>
 </head>
 <body>
@@ -222,12 +236,12 @@ const PRICE_MODELS = {
     {name:'메디컬 팬텀 2026',full:'바디프랜드 메디컬팬텀 2026',sub:'의료기기',price:'미등록',year:'2026'},
     {name:'팬텀 로보',full:'바디프랜드 팬텀로보',sub:'4D 로보 메카니즘',pcode:'17439983',price:'미등록',year:'2022'},
     {name:'메디컬 파라오 2026',full:'바디프랜드 메디컬파라오 2026',sub:'의료기기 파라오',pcode:'68290748',price:'미등록',year:'2025'},
-    {name:'더 렉스',full:'바디프랜드 더렉스 안마의자',sub:'슈퍼카 컨셉',price:'미등록'},
+    {name:'더 렉스',full:'바디프랜드 더렉스 안마의자',sub:'슈퍼카 컨셉',price:'미등록',noDanawa:true},
     {name:'퀀텀 뷰티캡슐 2026',full:'바디프랜드 퀀텀뷰티캡슐 2026',sub:'뷰티 케어 특화',pcode:'93802604',price:'미등록',year:'2025'},
     {name:'카릭스 로보',full:'바디프랜드 카릭스로보',sub:'로보 메카니즘',pcode:'93809612',price:'미등록',year:'2025'},
   ],
   '세라젬':[
-    {name:'마스터 V11',full:'세라젬 마스터V11 안마의자',sub:'최상위·듀얼 포지션',price:'미등록',year:'2024'},
+    {name:'마스터 V11',full:'세라젬 마스터V11 안마의자',sub:'최상위·듀얼 포지션',price:'미등록',year:'2024',noDanawa:true},
     {name:'마스터 V9',full:'세라젬 마스터V9',sub:'의료기기·식약처 인증',pcode:'49644845',price:'미등록',year:'2024'},
     {name:'마스터 V7',full:'세라젬 마스터V7',sub:'온열 척추·전신 케어',pcode:'19604639',price:'미등록',year:'2023'},
     {name:'마스터 V5',full:'세라젬 마스터V5',sub:'2025 신모델',pcode:'122693265',price:'미등록',year:'2025'},
@@ -236,7 +250,7 @@ const PRICE_MODELS = {
     {name:'파우제 M8 Fit',full:'세라젬 파우제M8Fit',sub:'커버 12종 교체',pcode:'73945565',price:'미등록',year:'2023'},
     {name:'파우제 M6',full:'세라젬 파우제M6',sub:'컴팩트 풀바디',pcode:'52470452',price:'미등록',year:'2024'},
     {name:'파우제 M4',full:'세라젬 파우제M4',sub:'미드레인지',pcode:'19880504',price:'미등록',year:'2021'},
-    {name:'파우제 M2',full:'세라젬 파우제M2',sub:'엔트리',price:'미등록'},
+    {name:'파우제 M2',full:'세라젬 파우제M2',sub:'엔트리',price:'미등록',noDanawa:true},
   ],
   '브람스':[
     {name:'올인케어 4D',full:'브람스 올인케어4D',sub:'4세대 눕힘 프레임',pcode:'122703555',price:'미등록',year:'2025'},
@@ -244,7 +258,7 @@ const PRICE_MODELS = {
     {name:'더블핏',full:'브람스 더블핏',sub:'듀얼 마사지',pcode:'74968073',price:'미등록',year:'2023'},
     {name:'S7400',full:'브람스 S7400',sub:'프리미엄 라인',price:'미등록'},
     {name:'테스 S4500',full:'브람스 테스S4500',sub:'중상위 라인',price:'미등록'},
-    {name:'루나 S4300',full:'브람스 루나S4300',sub:'중급 라인',price:'미등록'},
+    {name:'루나 S4300',full:'브람스 루나S4300',sub:'중급 라인',price:'미등록',noDanawa:true},
     {name:'프라임 S3300',full:'브람스 프라임S3300',sub:'스탠다드',pcode:'88223060',price:'미등록',year:'2023'},
     {name:'토파즈 A3838',full:'브람스 토파즈A3838',sub:'가성비',price:'미등록'},
   ],
@@ -505,7 +519,8 @@ async function fetchDanawaSearch(query){
   try{
     const html=await proxyGet(href);
     const info=extractDanawaInfo(html);
-    priceCache[key]=info?.price?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href}:null;
+    // 20만원 미만은 부품/소품으로 간주 → null 처리
+    priceCache[key]=(info?.price>=200000)?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href}:null;
   }catch(e){return null;}
   return priceCache[key];
 }
@@ -610,6 +625,112 @@ async function fetchNaver(query,modelKey){
   }catch(e){return null;}
   return priceCache[key];
 }
+// ─── 신규 모델 자동 발견 ───────────────────────────────────────────
+const DISC_DISMISSED_KEY='anma_disc_dismissed';
+const DISC_SKIP_WORDS=new Set(['풀바디','전신','프리미엄','스탠다드','안마','마사지','의자','헬스','케어','힐링','리클라이너','특가','무이자','할인','신형','최신','2025','2026','2024','2023','2022','AI','4D','3D','5D','IoT','신제품','정품','공식']);
+function getDismissedDisc(brand){try{var d=JSON.parse(localStorage.getItem(DISC_DISMISSED_KEY)||'{}');return new Set(d[brand]||[]);}catch(e){return new Set();}}
+function saveDiscDismissed(brand,key){try{var d=JSON.parse(localStorage.getItem(DISC_DISMISSED_KEY)||'{}');if(!d[brand])d[brand]=[];if(!d[brand].includes(key))d[brand].push(key);localStorage.setItem(DISC_DISMISSED_KEY,JSON.stringify(d));}catch(e){}}
+function isTitleKnown(title,brandModels){
+  var tn=title.replace(/<[^>]*>/g,'').replace(/[\s\[\](){}.,\-\/]/g,'').toLowerCase();
+  return brandModels.some(function(m){var mn=m.name.replace(/\s/g,'').toLowerCase();return mn.length>=2&&tn.includes(mn);});
+}
+function extractDiscModelName(title,brand){
+  var name=(title.replace(/<[^>]*>/g,'')||'').trim();
+  name=name.replace(new RegExp(brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'),'').trim();
+  name=name.replace(/안마의자|마사지의자|의자|안마기/g,'').replace(/[[\](){}!?*#|]/g,'').replace(/\s+/,' ').trim();
+  var tokens=name.split(/\s+/).filter(function(t){return t.length>=2&&!DISC_SKIP_WORDS.has(t)&&!/^\d{4}$/.test(t);});
+  return tokens.slice(0,3).join(' ');
+}
+async function fetchNaverDiscovery(brand){
+  if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return[];
+  var query=brand+' 안마의자';
+  var naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(query)+'&sort=sim&display=100&exclude=rental';
+  var naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
+  var tryP=function(u){return tFetch(u,{headers:naverHdrs},12000).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});};
+  var data=await Promise.any([
+    tryP('https://corsproxy.io/?url='+encodeURIComponent(naverUrl)).then(function(d){return d&&d.items?d:Promise.reject();}),
+    tryP('https://corsproxy.io/?'+encodeURIComponent(naverUrl)).then(function(d){return d&&d.items?d:Promise.reject();}),
+    tryP('https://proxy.cors.sh/'+naverUrl).then(function(d){return d&&d.items?d:Promise.reject();}),
+    tFetch('https://api.allorigins.win/raw?url='+encodeURIComponent(naverUrl),{headers:naverHdrs},12000).then(function(r){return r.ok?r.json():null;}).then(function(d){return d&&d.items?d:Promise.reject();}).catch(function(){return Promise.reject();}),
+    tFetch('https://thingproxy.freeboard.io/fetch/'+naverUrl,{headers:naverHdrs},12000).then(function(r){return r.ok?r.json():null;}).then(function(d){return d&&d.items?d:Promise.reject();}).catch(function(){return Promise.reject();}),
+  ]).catch(function(){return null;});
+  if(!data||!data.items)return[];
+  var RENTAL_KW=['렌탈','렌털','렌트','rental','lease','임대','월납','월정액','정기결제','구독','이용권','이용료','약정','월이용','월구독'];
+  var ACCESSORY_KW=['전용시트','전용커버','전용쿠션','전용매트','호환시트','호환쿠션','시트커버','쿠션커버','전용등받이','패드커버'];
+  return data.items.filter(function(it){
+    var t=(it.title||'').replace(/<[^>]*>/g,'').replace(/\s/g,'').toLowerCase();
+    var mn=(it.mallName||'').toLowerCase();
+    var hasRental=RENTAL_KW.some(function(kw){return t.includes(kw)||mn.includes(kw);});
+    var hasAcc=ACCESSORY_KW.some(function(kw){return t.includes(kw.replace(/\s/g,''));});
+    var hasAcc2=t.includes('전용')&&(t.includes('시트')||t.includes('커버')||t.includes('쿠션')||t.includes('매트'));
+    var isUsed=t.includes('중고')||t.includes('리퍼')||t.includes('전시품');
+    var isSoldOut=t.includes('품절')||t.includes('단종');
+    return !hasRental&&!hasAcc&&!hasAcc2&&!isUsed&&!isSoldOut;
+  });
+}
+async function runDiscovery(brand){
+  var el=document.getElementById('discovery-section');
+  if(!el||!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return;
+  var brandModels=PRICE_MODELS[brand]||[];
+  var dismissed=getDismissedDisc(brand);
+  // 세션 캐시 체크
+  var cacheKey='disc:'+brand;
+  if(cacheKey in priceCache){
+    var vis=priceCache[cacheKey].filter(function(c){return !dismissed.has(c.key);});
+    renderDiscoveredModels(brand,vis);return;
+  }
+  var items=await fetchNaverDiscovery(brand).catch(function(){return[];});
+  var candidates=[];var seen=new Set();
+  items.forEach(function(it){
+    var price=parseInt(it.lprice||'0');
+    if(price<500000)return;
+    var title=(it.title||'').replace(/<[^>]*>/g,'').trim();
+    // 브랜드명 포함 확인
+    if(title.indexOf(brand)<0)return;
+    // 기존 모델과 겹치면 스킵
+    if(isTitleKnown(title,brandModels))return;
+    var modelName=extractDiscModelName(title,brand);
+    if(!modelName||modelName.length<2)return;
+    var key=title.replace(/\s/g,'').substring(0,18).toLowerCase();
+    if(seen.has(key))return;
+    seen.add(key);
+    candidates.push({key:key,name:modelName,title:title,price:parseInt(it.lprice).toLocaleString('ko-KR')+'원',href:it.link,img:it.image});
+  });
+  priceCache[cacheKey]=candidates;
+  var visible=candidates.filter(function(c){return !dismissed.has(c.key);});
+  renderDiscoveredModels(brand,visible);
+}
+function renderDiscoveredModels(brand,items){
+  var el=document.getElementById('discovery-section');
+  if(!el)return;
+  if(!items||items.length===0){el.innerHTML='';return;}
+  var html=items.map(function(c){
+    return'<div class="disc-item" id="disc-'+c.key+'">'
+      +'<div class="disc-badge">🆕</div>'
+      +'<div class="disc-info">'
+        +'<a class="disc-name" href="'+c.href+'" target="_blank">'+c.name+'</a>'
+        +'<div class="disc-full">'+c.title+'</div>'
+      +'</div>'
+      +'<div class="disc-price">'+c.price+'</div>'
+      +'<button class="disc-dismiss" onclick="dismissDiscovered(\''+brand+'\',\''+c.key+'\')">✕ 무시</button>'
+    +'</div>';
+  }).join('');
+  el.innerHTML='<div class="disc-section"><div class="disc-header">🔍 신규 후보 발견 <span class="disc-count">'+items.length+'개</span></div>'+html+'</div>';
+}
+function dismissDiscovered(brand,key){
+  saveDiscDismissed(brand,key);
+  var el=document.getElementById('disc-'+key);
+  if(el){el.style.opacity='0';setTimeout(function(){
+    el.remove();
+    // 남은 항목 없으면 섹션 제거
+    var sec=document.getElementById('discovery-section');
+    if(sec&&!sec.querySelector('.disc-item'))sec.innerHTML='';
+  },300);}
+  // 세션 캐시에서도 제거
+  var ck='disc:'+brand;
+  if(priceCache[ck])priceCache[ck]=priceCache[ck].filter(function(c){return c.key!==key;});
+}
+// ──────────────────────────────────────────────────────────────────
 const SRC_COLOR={'다나와':'#005bac','네이버':'#03c75a','참고가':'#9ca3af'};
 const MALL_COLOR={
   'CJ온스타일':'#7c3aed',      // CJ온스타일 보라
@@ -707,7 +828,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v24_badge_colors';
+const LC_VER='v26_discovery';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
@@ -744,7 +865,7 @@ async function loadBrandPrices(brand){
       if(m.price!=='문의 필요'){
         var pair=await Promise.all([
           hasNaver?fetchNaver(m.full,m.name).catch(function(){return null;}):Promise.resolve(null),
-          (m.pcode?fetchDanawa(m.pcode).then(function(r){return r||fetchDanawaSearch(m.full);}):fetchDanawaSearch(m.full)).catch(function(){return null;})
+          (m.pcode?fetchDanawa(m.pcode).then(function(r){return r||fetchDanawaSearch(m.full);}):m.noDanawa?Promise.resolve(null):fetchDanawaSearch(m.full)).catch(function(){return null;})
         ]);
         if(activeFetchBrand!==brand)return;
         var naver=pair[0],danawa=pair[1];
@@ -824,8 +945,9 @@ function renderPriceTable(brand){
     var yearBadge=m.year?'<span style="font-size:9px;background:#e0f2fe;color:#0369a1;border-radius:3px;padding:1px 5px;font-weight:700">'+m.year+'</span>':'';
     return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
   }).join('');
-  document.getElementById('price-compare-table').innerHTML=`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div>`;
+  document.getElementById('price-compare-table').innerHTML=`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div><div id="discovery-section"></div>`;
   loadBrandPrices(brand);
+  runDiscovery(brand);
 }
 function setPriceBrand(btn,brand){document.querySelectorAll('.pb-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderPriceTable(brand);}
 function renderPriceChart(brand){
