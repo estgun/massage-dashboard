@@ -759,7 +759,15 @@ function setCellPriceDual(cellId,danawa,naver){
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
 const LC_VER='v28_clean';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
-(function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.removeItem('anma_auto_models_v1');localStorage.removeItem('anma_disc_dismissed');localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
+(function(){try{
+  // 자동 감지 모델 데이터 — 버전 무관하게 항상 제거
+  localStorage.removeItem('anma_auto_models_v1');
+  localStorage.removeItem('anma_disc_dismissed');
+  if(localStorage.getItem('anma_cache_ver')!==LC_VER){
+    Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});
+    localStorage.setItem('anma_cache_ver',LC_VER);
+  }
+}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
   try{localStorage.setItem(LC_PFX+brand+'_'+i,JSON.stringify({danawa,naver,ts:Date.now()}));}catch(e){}
 }
