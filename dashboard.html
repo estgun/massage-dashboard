@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='20';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='21';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -250,7 +250,7 @@ const PRICE_MODELS = {
     {name:'파우제 M8 Fit',full:'세라젬 파우제M8Fit',sub:'커버 12종 교체',pcode:'73945565',price:'미등록',year:'2023'},
     {name:'파우제 M6',full:'세라젬 파우제M6',sub:'컴팩트 풀바디',pcode:'52470452',price:'미등록',year:'2024'},
     {name:'파우제 M4',full:'세라젬 파우제M4',sub:'미드레인지',pcode:'19880504',price:'미등록',year:'2021'},
-    {name:'파우제 M2',full:'세라젬 파우제M2',sub:'엔트리',price:'미등록',noDanawa:true},
+    {name:'파우제 M2',full:'세라젬 파우제M2',sub:'엔트리',price:'미등록',noDanawa:true,noNaver:true},
   ],
   '브람스':[
     {name:'올인케어 4D',full:'브람스 올인케어4D',sub:'4세대 눕힘 프레임',pcode:'122703555',price:'미등록',year:'2025'},
@@ -626,10 +626,23 @@ async function fetchNaver(query,modelKey){
   return priceCache[key];
 }
 // ─── 신규 모델 자동 발견 ───────────────────────────────────────────
-const DISC_DISMISSED_KEY='anma_disc_dismissed';
 const DISC_SKIP_WORDS=new Set(['풀바디','전신','프리미엄','스탠다드','안마','마사지','의자','헬스','케어','힐링','리클라이너','특가','무이자','할인','신형','최신','2025','2026','2024','2023','2022','AI','4D','3D','5D','IoT','신제품','정품','공식']);
-function getDismissedDisc(brand){try{var d=JSON.parse(localStorage.getItem(DISC_DISMISSED_KEY)||'{}');return new Set(d[brand]||[]);}catch(e){return new Set();}}
-function saveDiscDismissed(brand,key){try{var d=JSON.parse(localStorage.getItem(DISC_DISMISSED_KEY)||'{}');if(!d[brand])d[brand]=[];if(!d[brand].includes(key))d[brand].push(key);localStorage.setItem(DISC_DISMISSED_KEY,JSON.stringify(d));}catch(e){}}
+const AUTO_MODELS_KEY='anma_auto_models_v1';
+function saveAutoModel(brand,model){
+  try{var d=JSON.parse(localStorage.getItem(AUTO_MODELS_KEY)||'{}');if(!d[brand])d[brand]=[];
+    var nk=model.name.replace(/\s/g,'').toLowerCase();
+    if(!d[brand].some(function(m){return m.name.replace(/\s/g,'').toLowerCase()===nk;})){d[brand].push(model);localStorage.setItem(AUTO_MODELS_KEY,JSON.stringify(d));}
+  }catch(e){}
+}
+function restoreAutoModels(){
+  try{var d=JSON.parse(localStorage.getItem(AUTO_MODELS_KEY)||'{}');
+    Object.keys(d).forEach(function(brand){
+      if(!PRICE_MODELS[brand])return;
+      var ex=new Set(PRICE_MODELS[brand].map(function(m){return m.name.replace(/\s/g,'').toLowerCase();}));
+      (d[brand]||[]).forEach(function(m){var k=m.name.replace(/\s/g,'').toLowerCase();if(!ex.has(k)){PRICE_MODELS[brand].push(m);ex.add(k);}});
+    });
+  }catch(e){}
+}
 function isTitleKnown(title,brandModels){
   var tn=title.replace(/<[^>]*>/g,'').replace(/[\s\[\](){}.,\-\/]/g,'').toLowerCase();
   return brandModels.some(function(m){var mn=m.name.replace(/\s/g,'').toLowerCase();return mn.length>=2&&tn.includes(mn);});
@@ -669,66 +682,30 @@ async function fetchNaverDiscovery(brand){
   });
 }
 async function runDiscovery(brand){
-  var el=document.getElementById('discovery-section');
-  if(!el||!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return;
-  var brandModels=PRICE_MODELS[brand]||[];
-  var dismissed=getDismissedDisc(brand);
-  // 세션 캐시 체크
+  if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return;
   var cacheKey='disc:'+brand;
-  if(cacheKey in priceCache){
-    var vis=priceCache[cacheKey].filter(function(c){return !dismissed.has(c.key);});
-    renderDiscoveredModels(brand,vis);return;
-  }
+  if(cacheKey in priceCache)return; // 이 세션에서 이미 실행됨
+  priceCache[cacheKey]=true; // async 전에 선점 (중복 실행 방지)
   var items=await fetchNaverDiscovery(brand).catch(function(){return[];});
-  var candidates=[];var seen=new Set();
+  var existingNames=new Set((PRICE_MODELS[brand]||[]).map(function(m){return m.name.replace(/\s/g,'').toLowerCase();}));
+  var added=false;
   items.forEach(function(it){
     var price=parseInt(it.lprice||'0');
     if(price<500000)return;
     var title=(it.title||'').replace(/<[^>]*>/g,'').trim();
-    // 브랜드명 포함 확인
     if(title.indexOf(brand)<0)return;
-    // 기존 모델과 겹치면 스킵
-    if(isTitleKnown(title,brandModels))return;
+    if(isTitleKnown(title,PRICE_MODELS[brand]))return;
     var modelName=extractDiscModelName(title,brand);
     if(!modelName||modelName.length<2)return;
-    var key=title.replace(/\s/g,'').substring(0,18).toLowerCase();
-    if(seen.has(key))return;
-    seen.add(key);
-    candidates.push({key:key,name:modelName,title:title,price:parseInt(it.lprice).toLocaleString('ko-KR')+'원',href:it.link,img:it.image});
+    var nameKey=modelName.replace(/\s/g,'').toLowerCase();
+    if(existingNames.has(nameKey))return;
+    var newModel={name:modelName,full:brand+' '+modelName+' 안마의자',sub:'자동 감지',price:'미등록',isAuto:true};
+    PRICE_MODELS[brand].push(newModel);
+    existingNames.add(nameKey);
+    saveAutoModel(brand,newModel);
+    added=true;
   });
-  priceCache[cacheKey]=candidates;
-  var visible=candidates.filter(function(c){return !dismissed.has(c.key);});
-  renderDiscoveredModels(brand,visible);
-}
-function renderDiscoveredModels(brand,items){
-  var el=document.getElementById('discovery-section');
-  if(!el)return;
-  if(!items||items.length===0){el.innerHTML='';return;}
-  var html=items.map(function(c){
-    return'<div class="disc-item" id="disc-'+c.key+'">'
-      +'<div class="disc-badge">🆕</div>'
-      +'<div class="disc-info">'
-        +'<a class="disc-name" href="'+c.href+'" target="_blank">'+c.name+'</a>'
-        +'<div class="disc-full">'+c.title+'</div>'
-      +'</div>'
-      +'<div class="disc-price">'+c.price+'</div>'
-      +'<button class="disc-dismiss" onclick="dismissDiscovered(\''+brand+'\',\''+c.key+'\')">✕ 무시</button>'
-    +'</div>';
-  }).join('');
-  el.innerHTML='<div class="disc-section"><div class="disc-header">🔍 신규 후보 발견 <span class="disc-count">'+items.length+'개</span></div>'+html+'</div>';
-}
-function dismissDiscovered(brand,key){
-  saveDiscDismissed(brand,key);
-  var el=document.getElementById('disc-'+key);
-  if(el){el.style.opacity='0';setTimeout(function(){
-    el.remove();
-    // 남은 항목 없으면 섹션 제거
-    var sec=document.getElementById('discovery-section');
-    if(sec&&!sec.querySelector('.disc-item'))sec.innerHTML='';
-  },300);}
-  // 세션 캐시에서도 제거
-  var ck='disc:'+brand;
-  if(priceCache[ck])priceCache[ck]=priceCache[ck].filter(function(c){return c.key!==key;});
+  if(added&&activeFetchBrand===brand)renderPriceTable(brand);
 }
 // ──────────────────────────────────────────────────────────────────
 const SRC_COLOR={'다나와':'#005bac','네이버':'#03c75a','참고가':'#9ca3af'};
@@ -791,9 +768,19 @@ var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   var TYPE_STYLE={'리퍼':{bg:'#fef3c7',color:'#92400e'},'중고':{bg:'#e0e7ff',color:'#3730a3'},'전시':{bg:'#d1fae5',color:'#065f46'}};
   var primBadge='';
   if(result.primaryType){var pts=TYPE_STYLE[result.primaryType]||{bg:'#f3f4f6',color:'#374151'};primBadge='<span style="font-size:9px;background:'+pts.bg+';color:'+pts.color+';padding:2px 6px;border-radius:4px;font-weight:700;margin-left:2px;">'+result.primaryType+'</span>';}
+  // 소스(다나와/네이버) + 실제 판매채널 뱃지 구성
+  var srcName=srcLabel==='D'?'다나와':'네이버';
+  var badgeHtml;
+  if(result.mall&&result.mall!==srcName){
+    // 실제 채널 확인됨 → 소스 뱃지 + 채널 뱃지 둘 다
+    badgeHtml=makeBadge(srcName,SRC_COLOR[srcName]||'#888')+' '+makeBadge(mallName,bg);
+  }else{
+    // 채널 불명 → 소스 뱃지만
+    badgeHtml=makeBadge(mallName,bg);
+  }
   var html='<div class="price-row">'
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
-    +'<a class="price-ref-link'+(isWin?'':' price-lose')+'" href="'+result.href+'" target="_blank" style="'+winStyle+'">'+result.price+' '+makeBadge(mallName,bg)+'</a>'
+    +'<a class="price-ref-link'+(isWin?'':' price-lose')+'" href="'+result.href+'" target="_blank" style="'+winStyle+'">'+result.price+' '+badgeHtml+'</a>'
     +primBadge
     +'</div>';
   // 리퍼·중고·전시 최저가 별도 줄
@@ -828,7 +815,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v26_discovery';
+const LC_VER='v27_autoadd';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
@@ -864,7 +851,7 @@ async function loadBrandPrices(brand){
       var m=models[i];
       if(m.price!=='문의 필요'){
         var pair=await Promise.all([
-          hasNaver?fetchNaver(m.full,m.name).catch(function(){return null;}):Promise.resolve(null),
+          (hasNaver&&!m.noNaver)?fetchNaver(m.full,m.name).catch(function(){return null;}):Promise.resolve(null),
           (m.pcode?fetchDanawa(m.pcode).then(function(r){return r||fetchDanawaSearch(m.full);}):m.noDanawa?Promise.resolve(null):fetchDanawaSearch(m.full)).catch(function(){return null;})
         ]);
         if(activeFetchBrand!==brand)return;
@@ -943,9 +930,10 @@ function renderPriceTable(brand){
       ?`<img id="${imgId}" class="model-img" src="${staticImg}" onerror="this.onerror=null;this.src='https://corsproxy.io/?url='+encodeURIComponent('${staticImg}');this.onerror=function(){this.src='${BLANK}'}">`
       :`<img id="${imgId}" class="model-img" src="${BLANK}">`;
     var yearBadge=m.year?'<span style="font-size:9px;background:#e0f2fe;color:#0369a1;border-radius:3px;padding:1px 5px;font-weight:700">'+m.year+'</span>':'';
-    return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
+    var autoBadge=m.isAuto?'<span style="font-size:9px;background:#fef3c7;color:#92400e;border-radius:3px;padding:1px 5px;font-weight:700">🆕</span>':'';
+    return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+autoBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
   }).join('');
-  document.getElementById('price-compare-table').innerHTML=`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div><div id="discovery-section"></div>`;
+  document.getElementById('price-compare-table').innerHTML=`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div>`;
   loadBrandPrices(brand);
   runDiscovery(brand);
 }
@@ -1011,6 +999,8 @@ async function init(){
   const now=new Date();
   document.getElementById('ts-header').textContent=now.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})+' '+now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준';
   updateNaverBtn();
+  // 이전 세션에서 자동 발견된 모델 복원
+  restoreAutoModels();
   // 네이버 API 미설정 시 패널 자동 열기
   if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET){
     document.getElementById('naver-api-setup').style.display='block';
