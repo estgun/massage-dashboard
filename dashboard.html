@@ -231,9 +231,9 @@ const PRICE_MODELS = {
     {name:'EP-MA05',full:'파나소닉 EP-MA05',sub:'9번째 라인',pcode:'16228961',price:'미등록',year:'2021'},
   ],
   '바디프랜드':[
-    {name:'733',full:'바디프랜드 733 안마의자',sub:'AI 헬스케어 로봇·CES 2026',price:'미등록',year:'2026'},
-    {name:'팔콘 SV 2026',full:'바디프랜드 팔콘SV 2026',sub:'2026 신모델',price:'미등록',year:'2026'},
-    {name:'메디컬 팬텀 2026',full:'바디프랜드 메디컬팬텀 2026',sub:'의료기기',price:'미등록',year:'2026'},
+    {name:'733',full:'바디프랜드 733 안마의자',sub:'AI 헬스케어 로봇·CES 2026',price:'미등록',year:'2026',pcode:'122652075'},
+    {name:'팔콘 SV 2026',full:'바디프랜드 팔콘SV 2026',sub:'2026 신모델',price:'미등록',year:'2026',noDanawa:true},
+    {name:'메디컬 팬텀 2026',full:'바디프랜드 메디컬팬텀 2026',sub:'의료기기',price:'미등록',year:'2026',noDanawa:true},
     {name:'팬텀 로보',full:'바디프랜드 팬텀로보',sub:'4D 로보 메카니즘',pcode:'17439983',price:'미등록',year:'2022'},
     {name:'메디컬 파라오 2026',full:'바디프랜드 메디컬파라오 2026',sub:'의료기기 파라오',pcode:'68290748',price:'미등록',year:'2025'},
     {name:'더 렉스',full:'바디프랜드 더렉스 안마의자',sub:'슈퍼카 컨셉',price:'미등록',noDanawa:true},
@@ -540,12 +540,18 @@ async function fetchDanawa(pcode){
 }
 async function fetchDanawaSearch(query){
   const key='ds:'+query;if(key in priceCache)return priceCache[key];
-  const href=`https://search.danawa.com/dsearch.php?query=${encodeURIComponent(query)}&sort=lowest_cost`;
+  const searchHref=`https://search.danawa.com/dsearch.php?query=${encodeURIComponent(query)}&sort=lowest_cost`;
   try{
-    const html=await proxyGet(href);
+    const html=await proxyGet(searchHref);
+    // 검색결과 HTML에서 pcode 추출 → 상품 상세 페이지로 직접 조회 (가격/채널 모두 정확)
+    const pcodeM=html.match(/prod\.danawa\.com\/info\/\?pcode=(\d+)/);
+    if(pcodeM){
+      const r=await fetchDanawa(pcodeM[1]);
+      if(r&&r.price>=200000){priceCache[key]=r;return r;}
+    }
+    // fallback: extractDanawaInfo (검색 페이지용, 가격만 추출 가능한 경우)
     const info=extractDanawaInfo(html);
-    // 20만원 미만은 부품/소품으로 간주 → null 처리
-    priceCache[key]=(info?.price>=200000)?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href}:null;
+    priceCache[key]=(info?.price>=200000)?{price:info.price,src:'다나와',mall:info.mall||null,img:info.img||null,href:searchHref}:null;
   }catch(e){return null;}
   return priceCache[key];
 }
