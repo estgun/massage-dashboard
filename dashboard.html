@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='22';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='23';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -689,6 +689,16 @@ const MALL_COLOR={
   '오늘의집':'#38bdf8',        // 오늘의집 하늘
 };
 const MALL_LIGHT_BG=new Set(['#f5c400','#38bdf8']);
+// 미등록 채널에 채널명 해시 기반 고유 색상 부여 (항상 동일 채널 = 동일 색)
+function mallHashColor(name){
+  var h=5381;
+  for(var i=0;i<name.length;i++)h=((h<<5)+h)+name.charCodeAt(i);
+  var hue=(Math.abs(h)%290)+30; // 30~320° 범위 (순수 빨강 0°/360° 회피)
+  return'hsl('+hue+',58%,36%)';
+}
+function mallColor(mallName,srcFallback){
+  return MALL_COLOR[mallName]||srcFallback||mallHashColor(mallName);
+}
 function makeBadge(label,bg){
   const txtColor=MALL_LIGHT_BG.has(bg)?'#1a1a2e':'white';
   return`<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;background:${bg};color:${txtColor};white-space:nowrap;vertical-align:middle">${label}</span>`;
@@ -697,28 +707,29 @@ function setCellPrice(cellId,result){
   const el=document.getElementById(cellId);if(!el)return;
   if(result?.price){
     const mallName=result.mall||(result.src==='다나와'?'다나와':result.src==='네이버'?'네이버':'참고가');
-    const bg=MALL_COLOR[mallName]||(result.src==='다나와'?SRC_COLOR['다나와']:mallName==='네이버'?SRC_COLOR['네이버']:'#8b8b8b')||'#9ca3af';
+    const bg=mallColor(mallName, result.src==='다나와'?SRC_COLOR['다나와']:result.src==='네이버'?SRC_COLOR['네이버']:SRC_COLOR['참고가']);
     const badge=makeBadge(mallName,bg);
     el.innerHTML='<a class="price-ref-link" href="'+result.href+'" target="_blank">'+result.price+' '+badge+'</a>';
   }
   else{el.innerHTML='<span style="color:#d1d5db;font-size:11px">—</span>';}
 }
 var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
-  var mallName=result.mall||(srcLabel==='D'?'다나와':'네이버');
-  var bg=MALL_COLOR[mallName]||(srcLabel==='D'?SRC_COLOR['다나와']:mallName==='네이버'?SRC_COLOR['네이버']:'#8b8b8b')||'#888';
+  var srcName=srcLabel==='D'?'다나와':'네이버';
+  var mallName=result.mall||srcName;
+  var bg=mallColor(mallName, srcName==='다나와'?SRC_COLOR['다나와']:mallName===srcName?SRC_COLOR['네이버']:null);
   var winStyle=isWin?'color:'+bg+';font-weight:800':'';
   var TYPE_STYLE={'리퍼':{bg:'#fef3c7',color:'#92400e'},'중고':{bg:'#e0e7ff',color:'#3730a3'},'전시':{bg:'#d1fae5',color:'#065f46'}};
   var primBadge='';
   if(result.primaryType){var pts=TYPE_STYLE[result.primaryType]||{bg:'#f3f4f6',color:'#374151'};primBadge='<span style="font-size:9px;background:'+pts.bg+';color:'+pts.color+';padding:2px 6px;border-radius:4px;font-weight:700;margin-left:2px;">'+result.primaryType+'</span>';}
-  // 소스(다나와/네이버) + 실제 판매채널 뱃지 구성
-  var srcName=srcLabel==='D'?'다나와':'네이버';
+  // 소스(다나와/네이버) + 실제 판매채널 뱃지 — 항상 둘 다 표시
+  var srcBg=SRC_COLOR[srcName]||'#888';
   var badgeHtml;
   if(result.mall&&result.mall!==srcName){
-    // 실제 채널 확인됨 → 소스 뱃지 + 채널 뱃지 둘 다
-    badgeHtml=makeBadge(srcName,SRC_COLOR[srcName]||'#888')+' '+makeBadge(mallName,bg);
+    // 실제 채널 확인됨 → [소스] [채널] 두 뱃지
+    badgeHtml=makeBadge(srcName,srcBg)+' '+makeBadge(mallName,bg);
   }else{
-    // 채널 불명 → 소스 뱃지만
-    badgeHtml=makeBadge(mallName,bg);
+    // 채널 미확인 → 소스 뱃지만 (다나와 or 네이버)
+    badgeHtml=makeBadge(srcName,srcBg);
   }
   var html='<div class="price-row">'
     +'<span class="price-src '+srcClass+'">'+srcLabel+'</span>'
@@ -729,7 +740,7 @@ var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   var TYPE_STYLE={'리퍼':{bg:'#fef3c7',color:'#92400e'},'중고':{bg:'#e0e7ff',color:'#3730a3'},'전시':{bg:'#d1fae5',color:'#065f46'}};
   if(result.secPrices&&result.secPrices.length>0){
     result.secPrices.forEach(function(rb){
-      var rbg=MALL_COLOR[rb.mall]||'#6b7280';
+      var rbg=mallColor(rb.mall,null);
       var ts=TYPE_STYLE[rb.type]||{bg:'#f3f4f6',color:'#374151'};
       html+='<div class="price-row" style="margin-top:2px;">'
         +'<span class="price-src '+srcClass+'" style="opacity:0.5">'+srcLabel+'</span>'
@@ -757,7 +768,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v28_clean';
+const LC_VER='v29_hashcolor';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{
   // 자동 감지 모델 데이터 — 버전 무관하게 항상 제거
