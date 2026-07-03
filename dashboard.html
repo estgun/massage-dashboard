@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='21';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='22';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -466,20 +466,45 @@ function extractDanawaInfo(html){
   if(!price){const m4=html.match(/([\d,]{6,})\s*원[\s\S]{0,30}(?:무료배송|쿠팡|최저)/);if(m4)price=m4[1]+'원';}
   if(!price)return img?{price:null,mall:null,img}:null;
   let mall=null;
-  const cmpny1=html.match(/cmpny_info[^>]+alt="([^"]{2,20})"/);
-  const cmpny2=html.match(/alt="([^"]{2,20})"[^>]+cmpny_info/);
-  if(cmpny1) mall=cmpny1[1].trim();
-  else if(cmpny2) mall=cmpny2[1].trim();
+  // 1순위: og:description에 "최저가 X원 | 채널명" 패턴 (가장 안정적)
+  const ogPipe=html.match(/content="최저가\s+[\d,]+원\s*\|\s*([^",\n<]{2,25})/);
+  if(ogPipe) mall=ogPipe[1].trim();
+  // 2순위: cmpny_info alt (다나와 상품정보 페이지)
+  if(!mall){const c1=html.match(/cmpny_info[^>]+alt="([^"]{2,20})"/);if(c1)mall=c1[1].trim();}
+  if(!mall){const c2=html.match(/alt="([^"]{2,20})"[^>]+cmpny_info/);if(c2)mall=c2[1].trim();}
+  // 3순위: JSON 필드 — 다양한 키 이름 시도
   if(!mall){
-    const mallPatterns=[
+    const jPatterns=[
       /"lowestMallName"\s*:\s*"([^"]{2,30})"/,
+      /"cmpnyNm"\s*:\s*"([^"]{2,30})"/,
+      /"lowestCmpnyNm"\s*:\s*"([^"]{2,30})"/,
+      /"lowestPriceCmpnyNm"\s*:\s*"([^"]{2,30})"/,
       /"shopNm"\s*:\s*"([^"]{2,30})"/,
       /"mallName"\s*:\s*"([^"]{2,30})"/,
       /"sellerName"\s*:\s*"([^"]{2,30})"/,
-      /class="[^"]*mall[_\-]?name[^"]*"[^>]*>\s*([^<\s][^<]{1,28}?)\s*</,
+      /"storeName"\s*:\s*"([^"]{2,30})"/,
+      /"CompanyName"\s*:\s*"([^"]{2,30})"/,
     ];
-    for(const p of mallPatterns){const m=html.match(p);if(m&&m[1]&&m[1].trim().length>1){mall=m[1].trim();break;}}
+    for(const p of jPatterns){const m=html.match(p);if(m&&m[1]&&m[1].trim().length>1){mall=m[1].trim();break;}}
   }
+  // 4순위: 가격 근처 alt 속성 (로고 이미지)
+  if(!mall){
+    const priceNum=price.replace(/[^\d]/g,'');
+    const nearIdx=html.indexOf(priceNum);
+    if(nearIdx>0){
+      const ctx=html.substring(Math.max(0,nearIdx-500),nearIdx+200);
+      const altM=ctx.match(/alt="([가-힣a-zA-Z0-9\.]{2,20})"/);
+      if(altM)mall=altM[1].trim();
+    }
+  }
+  // 5순위: CSS 클래스 기반
+  if(!mall){
+    const cssP=/class="[^"]*(?:mall|shop|cmpny)[_\-]?(?:name|nm|logo)[^"]*"[^>]*>\s*([^<\s][^<]{1,25}?)\s*</;
+    const cm=html.match(cssP);
+    if(cm&&cm[1])mall=cm[1].trim();
+  }
+  // 쓰레기 값 필터 (숫자만, 빈값, 너무 긴 값 제거)
+  if(mall&&(/^\d+$/.test(mall)||mall.length>25))mall=null;
   return{price,mall,img};
 }
 async function proxyGet(url){
@@ -625,89 +650,6 @@ async function fetchNaver(query,modelKey){
   }catch(e){return null;}
   return priceCache[key];
 }
-// ─── 신규 모델 자동 발견 ───────────────────────────────────────────
-const DISC_SKIP_WORDS=new Set(['풀바디','전신','프리미엄','스탠다드','안마','마사지','의자','헬스','케어','힐링','리클라이너','특가','무이자','할인','신형','최신','2025','2026','2024','2023','2022','AI','4D','3D','5D','IoT','신제품','정품','공식']);
-const AUTO_MODELS_KEY='anma_auto_models_v1';
-function saveAutoModel(brand,model){
-  try{var d=JSON.parse(localStorage.getItem(AUTO_MODELS_KEY)||'{}');if(!d[brand])d[brand]=[];
-    var nk=model.name.replace(/\s/g,'').toLowerCase();
-    if(!d[brand].some(function(m){return m.name.replace(/\s/g,'').toLowerCase()===nk;})){d[brand].push(model);localStorage.setItem(AUTO_MODELS_KEY,JSON.stringify(d));}
-  }catch(e){}
-}
-function restoreAutoModels(){
-  try{var d=JSON.parse(localStorage.getItem(AUTO_MODELS_KEY)||'{}');
-    Object.keys(d).forEach(function(brand){
-      if(!PRICE_MODELS[brand])return;
-      var ex=new Set(PRICE_MODELS[brand].map(function(m){return m.name.replace(/\s/g,'').toLowerCase();}));
-      (d[brand]||[]).forEach(function(m){var k=m.name.replace(/\s/g,'').toLowerCase();if(!ex.has(k)){PRICE_MODELS[brand].push(m);ex.add(k);}});
-    });
-  }catch(e){}
-}
-function isTitleKnown(title,brandModels){
-  var tn=title.replace(/<[^>]*>/g,'').replace(/[\s\[\](){}.,\-\/]/g,'').toLowerCase();
-  return brandModels.some(function(m){var mn=m.name.replace(/\s/g,'').toLowerCase();return mn.length>=2&&tn.includes(mn);});
-}
-function extractDiscModelName(title,brand){
-  var name=(title.replace(/<[^>]*>/g,'')||'').trim();
-  name=name.replace(new RegExp(brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'),'').trim();
-  name=name.replace(/안마의자|마사지의자|의자|안마기/g,'').replace(/[[\](){}!?*#|]/g,'').replace(/\s+/,' ').trim();
-  var tokens=name.split(/\s+/).filter(function(t){return t.length>=2&&!DISC_SKIP_WORDS.has(t)&&!/^\d{4}$/.test(t);});
-  return tokens.slice(0,3).join(' ');
-}
-async function fetchNaverDiscovery(brand){
-  if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return[];
-  var query=brand+' 안마의자';
-  var naverUrl='https://openapi.naver.com/v1/search/shop.json?query='+encodeURIComponent(query)+'&sort=sim&display=100&exclude=rental';
-  var naverHdrs={'X-Naver-Client-Id':NAVER_CLIENT_ID,'X-Naver-Client-Secret':NAVER_CLIENT_SECRET};
-  var tryP=function(u){return tFetch(u,{headers:naverHdrs},12000).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});};
-  var data=await Promise.any([
-    tryP('https://corsproxy.io/?url='+encodeURIComponent(naverUrl)).then(function(d){return d&&d.items?d:Promise.reject();}),
-    tryP('https://corsproxy.io/?'+encodeURIComponent(naverUrl)).then(function(d){return d&&d.items?d:Promise.reject();}),
-    tryP('https://proxy.cors.sh/'+naverUrl).then(function(d){return d&&d.items?d:Promise.reject();}),
-    tFetch('https://api.allorigins.win/raw?url='+encodeURIComponent(naverUrl),{headers:naverHdrs},12000).then(function(r){return r.ok?r.json():null;}).then(function(d){return d&&d.items?d:Promise.reject();}).catch(function(){return Promise.reject();}),
-    tFetch('https://thingproxy.freeboard.io/fetch/'+naverUrl,{headers:naverHdrs},12000).then(function(r){return r.ok?r.json():null;}).then(function(d){return d&&d.items?d:Promise.reject();}).catch(function(){return Promise.reject();}),
-  ]).catch(function(){return null;});
-  if(!data||!data.items)return[];
-  var RENTAL_KW=['렌탈','렌털','렌트','rental','lease','임대','월납','월정액','정기결제','구독','이용권','이용료','약정','월이용','월구독'];
-  var ACCESSORY_KW=['전용시트','전용커버','전용쿠션','전용매트','호환시트','호환쿠션','시트커버','쿠션커버','전용등받이','패드커버'];
-  return data.items.filter(function(it){
-    var t=(it.title||'').replace(/<[^>]*>/g,'').replace(/\s/g,'').toLowerCase();
-    var mn=(it.mallName||'').toLowerCase();
-    var hasRental=RENTAL_KW.some(function(kw){return t.includes(kw)||mn.includes(kw);});
-    var hasAcc=ACCESSORY_KW.some(function(kw){return t.includes(kw.replace(/\s/g,''));});
-    var hasAcc2=t.includes('전용')&&(t.includes('시트')||t.includes('커버')||t.includes('쿠션')||t.includes('매트'));
-    var isUsed=t.includes('중고')||t.includes('리퍼')||t.includes('전시품');
-    var isSoldOut=t.includes('품절')||t.includes('단종');
-    return !hasRental&&!hasAcc&&!hasAcc2&&!isUsed&&!isSoldOut;
-  });
-}
-async function runDiscovery(brand){
-  if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET)return;
-  var cacheKey='disc:'+brand;
-  if(cacheKey in priceCache)return; // 이 세션에서 이미 실행됨
-  priceCache[cacheKey]=true; // async 전에 선점 (중복 실행 방지)
-  var items=await fetchNaverDiscovery(brand).catch(function(){return[];});
-  var existingNames=new Set((PRICE_MODELS[brand]||[]).map(function(m){return m.name.replace(/\s/g,'').toLowerCase();}));
-  var added=false;
-  items.forEach(function(it){
-    var price=parseInt(it.lprice||'0');
-    if(price<500000)return;
-    var title=(it.title||'').replace(/<[^>]*>/g,'').trim();
-    if(title.indexOf(brand)<0)return;
-    if(isTitleKnown(title,PRICE_MODELS[brand]))return;
-    var modelName=extractDiscModelName(title,brand);
-    if(!modelName||modelName.length<2)return;
-    var nameKey=modelName.replace(/\s/g,'').toLowerCase();
-    if(existingNames.has(nameKey))return;
-    var newModel={name:modelName,full:brand+' '+modelName+' 안마의자',sub:'자동 감지',price:'미등록',isAuto:true};
-    PRICE_MODELS[brand].push(newModel);
-    existingNames.add(nameKey);
-    saveAutoModel(brand,newModel);
-    added=true;
-  });
-  if(added&&activeFetchBrand===brand)renderPriceTable(brand);
-}
-// ──────────────────────────────────────────────────────────────────
 const SRC_COLOR={'다나와':'#005bac','네이버':'#03c75a','참고가':'#9ca3af'};
 const MALL_COLOR={
   'CJ온스타일':'#7c3aed',      // CJ온스타일 보라
@@ -815,9 +757,9 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v27_autoadd';
+const LC_VER='v28_clean';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
-(function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
+(function(){try{if(localStorage.getItem('anma_cache_ver')!==LC_VER){Object.keys(localStorage).forEach(function(k){if(k.startsWith(LC_PFX))localStorage.removeItem(k);});localStorage.removeItem('anma_auto_models_v1');localStorage.removeItem('anma_disc_dismissed');localStorage.setItem('anma_cache_ver',LC_VER);}}catch(e){}})();
 function savePriceCache(brand,i,danawa,naver){
   try{localStorage.setItem(LC_PFX+brand+'_'+i,JSON.stringify({danawa,naver,ts:Date.now()}));}catch(e){}
 }
@@ -930,12 +872,10 @@ function renderPriceTable(brand){
       ?`<img id="${imgId}" class="model-img" src="${staticImg}" onerror="this.onerror=null;this.src='https://corsproxy.io/?url='+encodeURIComponent('${staticImg}');this.onerror=function(){this.src='${BLANK}'}">`
       :`<img id="${imgId}" class="model-img" src="${BLANK}">`;
     var yearBadge=m.year?'<span style="font-size:9px;background:#e0f2fe;color:#0369a1;border-radius:3px;padding:1px 5px;font-weight:700">'+m.year+'</span>':'';
-    var autoBadge=m.isAuto?'<span style="font-size:9px;background:#fef3c7;color:#92400e;border-radius:3px;padding:1px 5px;font-weight:700">🆕</span>':'';
-    return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+autoBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
+    return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
   }).join('');
   document.getElementById('price-compare-table').innerHTML=`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div>`;
   loadBrandPrices(brand);
-  runDiscovery(brand);
 }
 function setPriceBrand(btn,brand){document.querySelectorAll('.pb-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderPriceTable(brand);}
 function renderPriceChart(brand){
@@ -999,8 +939,6 @@ async function init(){
   const now=new Date();
   document.getElementById('ts-header').textContent=now.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})+' '+now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준';
   updateNaverBtn();
-  // 이전 세션에서 자동 발견된 모델 복원
-  restoreAutoModels();
   // 네이버 API 미설정 시 패널 자동 열기
   if(!NAVER_CLIENT_ID||!NAVER_CLIENT_SECRET){
     document.getElementById('naver-api-setup').style.display='block';
