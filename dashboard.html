@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='25';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='26';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -89,7 +89,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .price-ref-link { font-size: 13px; font-weight: 700; color: #111827; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
 .price-ref-link:hover { color: #5c6bc0; }
 .price-loading { color: #9ca3af; font-size: 10px; animation: pricePulse 1.4s ease-in-out infinite; }
-.price-dual-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.price-dual-row { display:flex; flex-direction:column; gap:2px; }
 .price-row { display:flex; align-items:center; gap:4px; }
 .price-src { font-size:9px; font-weight:800; padding:1px 5px; border-radius:3px; flex-shrink:0; letter-spacing:0.3px; }
 .price-src-d { background:#dbeafe; color:#1d4ed8; }
@@ -758,7 +758,6 @@ function setCellPriceDual(cellId,danawa,naver){
     var dWin=toNum(danawa.price)<=toNum(naver.price);
     el.innerHTML='<div class="price-dual-row">'
       +makePriceBlock(danawa,'price-src-d','D',dWin,dWin)
-      +'<span class="price-divider">|</span>'
       +makePriceBlock(naver,'price-src-n','N',!dWin,!dWin)
       +'</div>';
   } else if(danawa?.price){
@@ -768,7 +767,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v29_hashcolor';
+const LC_VER='v30_vertical';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{
   // 자동 감지 모델 데이터 — 버전 무관하게 항상 제거
