@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='26';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='27';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -77,6 +77,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI',
 .pb-btn { padding: 5px 11px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #e5e7eb; background: white; color: #6b7280; transition: all 0.15s; }
 .pb-btn:hover { border-color: #5c6bc0; color: #5c6bc0; }
 .pb-btn.active { background: #5c6bc0; color: white; border-color: #5c6bc0; }
+.brand-header { display:flex; align-items:flex-start; gap:14px; padding:14px 18px; background:linear-gradient(135deg,#f8f9ff,#eff0ff); border-radius:12px; margin-bottom:14px; border:1px solid #e8eaf6; }
+.brand-header-logo { font-size:30px; line-height:1; flex-shrink:0; margin-top:2px; }
+.brand-header-name { font-size:15px; font-weight:800; color:#1f2937; line-height:1.2; }
+.brand-header-meta { font-size:10px; color:#9ca3af; margin-top:2px; }
+.brand-header-desc { font-size:11px; color:#4b5563; margin-top:5px; line-height:1.55; }
+.brand-header-link { display:inline-block; margin-top:5px; font-size:10px; color:#5c6bc0; font-weight:600; text-decoration:none; }
+.brand-header-link:hover { text-decoration:underline; }
 .plist { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; width: fit-content; min-width: 360px; }
 .prow { display: flex; align-items: center; gap: 20px; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; }
 .prow:last-child { border-bottom: none; }
@@ -762,15 +769,34 @@ var makePriceBlock=function(result,srcClass,srcLabel,isWin,showTag){
   }
   return html;
 };
+var makePriceTieBlock=function(danawa,naver){
+  var dMall=danawa.mall||'다나와';
+  var nMall=naver.mall||'네이버';
+  var dSrcBg=SRC_COLOR['다나와']||'#888';
+  var nSrcBg=SRC_COLOR['네이버']||'#888';
+  var dBg=mallColor(dMall,dSrcBg);
+  var nBg=mallColor(nMall,nSrcBg);
+  var dBadges=makeBadge('다나와',dSrcBg)+(dMall!=='다나와'?' '+makeBadge(dMall,dBg):'');
+  var nBadges=makeBadge('네이버',nSrcBg)+(nMall!=='네이버'?' '+makeBadge(nMall,nBg):'');
+  return'<div class="price-row">'
+    +'<span class="price-src" style="background:#e0e7ff;color:#3730a3;font-size:8px;padding:1px 4px">D=N</span>'
+    +'<a class="price-ref-link" href="'+danawa.href+'" target="_blank" style="font-weight:800">'+danawa.price+' '+dBadges+' '+nBadges+'</a>'
+    +'</div>';
+};
 function setCellPriceDual(cellId,danawa,naver){
   var el=document.getElementById(cellId);if(!el)return;
   if(!danawa?.price&&!naver?.price){el.innerHTML='<span style="color:#d1d5db;font-size:11px">—</span>';return;}
   if(danawa?.price&&naver?.price){
-    var dWin=toNum(danawa.price)<=toNum(naver.price);
-    el.innerHTML='<div class="price-dual-row">'
-      +makePriceBlock(danawa,'price-src-d','D',dWin,dWin)
-      +makePriceBlock(naver,'price-src-n','N',!dWin,!dWin)
-      +'</div>';
+    var dNum=toNum(danawa.price);var nNum=toNum(naver.price);
+    if(dNum===nNum){
+      el.innerHTML=makePriceTieBlock(danawa,naver);
+    } else {
+      var dWin=dNum<nNum;
+      el.innerHTML='<div class="price-dual-row">'
+        +makePriceBlock(danawa,'price-src-d','D',dWin,dWin)
+        +makePriceBlock(naver,'price-src-n','N',!dWin,!dWin)
+        +'</div>';
+    }
   } else if(danawa?.price){
     el.innerHTML=makePriceBlock(danawa,'price-src-d','D',true,false);
   } else {
@@ -778,7 +804,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v30_vertical';
+const LC_VER='v31_brandheader';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{
   // 자동 감지 모델 데이터 — 버전 무관하게 항상 제거
@@ -881,6 +907,12 @@ function saveNaverKey(){
   updateNaverBtn();
   refreshPrices();
 }
+function renderBrandHeader(brand){
+  var info=BRAND_INFO[brand+' 안마의자']||BRAND_INFO[brand];
+  if(!info||!info.name)return'';
+  var linkHtml=info.url?'<a class="brand-header-link" href="'+info.url+'" target="_blank">🔗 공식 홈페이지</a>':'';
+  return'<div class="brand-header"><div class="brand-header-logo">'+info.logo+'</div><div><div class="brand-header-name">'+info.name+'</div><div class="brand-header-meta">'+info.meta+'</div><div class="brand-header-desc">'+info.desc+'</div>'+linkHtml+'</div></div>';
+}
 function renderPriceTable(brand){
   const models=PRICE_MODELS[brand]||[];
   const rows=models.map((m,i)=>{
@@ -903,7 +935,7 @@ function renderPriceTable(brand){
     var yearBadge=m.year?'<span style="font-size:9px;background:#e0f2fe;color:#0369a1;border-radius:3px;padding:1px 5px;font-weight:700">'+m.year+'</span>':'';
     return'<div class="prow">'+imgEl+'<div class="prow-name"><div class="model-cell">'+m.name+'</div><div class="model-sub">'+m.sub+' '+yearBadge+'</div></div><div class="prow-price" id="'+cellId+'">'+priceContent+'</div></div>';
   }).join('');
-  document.getElementById('price-compare-table').innerHTML=`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div>`;
+  document.getElementById('price-compare-table').innerHTML=renderBrandHeader(brand)+`<div id="price-chart-wrap"><div class="plist">${rows}</div><div id="price-chart-box"><div class="chart-head">📊 모델별 최저가 비교</div><div id="price-chart-bars"><span style="font-size:11px;color:#9ca3af">가격 조회중...</span></div></div></div>`;
   loadBrandPrices(brand);
 }
 function setPriceBrand(btn,brand){document.querySelectorAll('.pb-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderPriceTable(brand);}
