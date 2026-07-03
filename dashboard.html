@@ -6,7 +6,7 @@
 <title>안마의자 대시보드</title>
 <script>
 // 브라우저 HTML 캐시 우회 — 버전 파라미터 없으면 자동 리다이렉트
-(function(){var V='30';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
+(function(){var V='31';var p=new URLSearchParams(location.search);if(p.get('v')!==V){p.set('v',V);location.replace(location.pathname+'?'+p.toString());}})();
 </script>
 <style>
 :root { color-scheme: light; }
@@ -216,7 +216,7 @@ const BRAND_INFO = {
   '리쏘 안마의자':{ logo:'✨', logoImg:'https://www.google.com/s2/favicons?domain=lisso.co.kr&sz=64', name:'리쏘 (LISSO)', meta:'한국', desc:'국내 최초 4D 듀얼무빙 기술 보유(오딘2). 물리치료 연구소 KEMA와 협력한 오스카 PT 출시(2025).', url:'https://www.lisso.co.kr' },
   '누하스':{ logo:'🌊', logoImg:'https://cdn-godomall-web-116-129.cdn-nhncommerce.com/nouhaus2_godomall_com/data/skin/front/mime_left_200703/img/logo/main_logo.png', name:'누하스 (NUHAS)', meta:'한국', desc:'SL트랙·4D 기술 보유 안마의자 전문 브랜드. 루나 4D, 오로라 올인원 등 2026 신모델 출시.', url:'https://nuhas.co.kr' },
   '코웨이':{ logo:'💧', logoImg:'https://www.google.com/s2/favicons?domain=coway.co.kr&sz=64', name:'코웨이 비렉스 (COWAY BILEX)', meta:'한국 · 1989년 설립', desc:'환경가전 1위 코웨이의 안마의자 라인 비렉스. SL프레임·음성인식·4D 기술 탑재, 페블체어·마인 시리즈 운영.', url:'https://www.coway.co.kr' },
-  '쿠쿠':{ logo:'🍚', logoImg:'https://www.google.com/s2/favicons?domain=cuckoo.co.kr&sz=64', name:'쿠쿠 리네이처 (CUCKOO)', meta:'한국 · 1978년 설립', desc:'밥솥 1위 쿠쿠전자의 안마의자 라인 리네이처. 4D 입체 메카니즘과 다양한 자동 코스 탑재.', url:'https://www.cuckoo.co.kr' },
+  '쿠쿠':{ logo:'🍚', logoImg:'https://cdn.cuckoo.co.kr/upload_cuckoo/pc/images/common/logo.png', name:'쿠쿠 리네이처 (CUCKOO)', meta:'한국 · 1978년 설립', desc:'밥솥 1위 쿠쿠전자의 안마의자 라인 리네이처. 4D 입체 메카니즘과 다양한 자동 코스 탑재.', url:'https://www.cuckoo.co.kr' },
   '비욘드릴렉스':{ logo:'🔵', logoImg:'https://beyondrelax.co.kr/web/upload/free_design/fixed_logo.png', name:'비욘드릴렉스 (BEYONDRELAX)', meta:'한국', desc:'프리미엄 안마의자 전문 브랜드. 오르카·에탄·키란 시리즈로 고급 시장 공략. 2026 쿼드코어 4D 노바 출시.', url:'https://beyondrelax.co.kr' },
   '바이브썸':{ logo:'🎯', name:'바이브썸 (VIBESOME)', meta:'한국', desc:'2025~2026년 신흥 브랜드. VT·V·I·B 시리즈로 SL트랙·4D·발롤러 등 최신 기능을 합리적 가격에 제공.', url:'' },
 };
@@ -820,7 +820,7 @@ function setCellPriceDual(cellId,danawa,naver){
   }
 }
 const LC_PFX='anma_p_';const LC_TTL=4*3600*1000;
-const LC_VER='v34_logo_size';
+const LC_VER='v35_brand_logos';
 // 버전 바뀌면 모든 가격 캐시 자동 초기화 (렌탈 필터 적용 등)
 (function(){try{
   // 자동 감지 모델 데이터 — 버전 무관하게 항상 제거
